@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Calendar as CalendarIcon, List } from 'lucide-react';
+import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Calendar as CalendarIcon, List, Search } from 'lucide-react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
@@ -99,13 +99,10 @@ const Tasks = () => {
       });
       setTasks(updatedTasks);
 
-      // Llamada al API para actualizar fecha (asumiendo que createdAt es la fecha de planificación)
-      // Nota: Idealmente deberíamos tener un campo 'dueDate' o 'scheduledDate', pero usaremos createdAt o crearemos un endpoint nuevo
-      // Por ahora, solo mostraremos un mensaje ya que el backend necesita soportar cambio de fecha
       console.log('Tarea movida a:', start);
       
-      // Aquí iría: await api.patch(`/tasks/${event.id}`, { scheduledDate: start });
-      alert('Función de reprogramar fecha pendiente de backend');
+      // Implementación real del backend para reprogramar
+      await api.patch(`/tasks/${event.id}/reschedule`, { scheduledDate: start });
       
     } catch (error) {
       console.error('Error al mover tarea:', error);
@@ -114,22 +111,28 @@ const Tasks = () => {
   };
 
   const eventStyleGetter = (event, start, end, isSelected) => {
-    let backgroundColor = '#663399'; // Default morado
+    let backgroundColor = '#8b5cf6'; // Default morado (violet-500)
+    let borderColor = '#7c3aed';
     
     if (event.resource.status === 'completada') {
-      backgroundColor = '#10B981'; // Verde
+      backgroundColor = '#10B981'; // Verde (emerald-500)
+      borderColor = '#059669';
     } else if (event.resource.priority === 'alta') {
-      backgroundColor = '#EF4444'; // Rojo
+      backgroundColor = '#EF4444'; // Rojo (red-500)
+      borderColor = '#DC2626';
     }
 
     return {
       style: {
         backgroundColor,
-        borderRadius: '5px',
-        opacity: 0.8,
+        borderColor,
+        borderRadius: '8px',
+        opacity: 0.9,
         color: 'white',
-        border: '0px',
-        display: 'block'
+        border: '1px solid',
+        display: 'block',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        fontWeight: '500'
       }
     };
   };
@@ -153,13 +156,13 @@ const Tasks = () => {
     switch (status) {
       case 'completada':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800">
             <Check className="w-3 h-3 mr-1" /> Completada
           </span>
         );
       case 'pendiente':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800">
             <Clock className="w-3 h-3 mr-1" /> Pendiente
           </span>
         );
@@ -172,13 +175,13 @@ const Tasks = () => {
     switch (priority) {
       case 'alta':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800">
             <AlertCircle className="w-3 h-3 mr-1" /> Alta
           </span>
         );
       case 'normal':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
             Normal
           </span>
         );
@@ -200,8 +203,9 @@ const Tasks = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{borderBottomColor: '#663399'}}></div>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300 text-lg animate-pulse">Cargando tareas...</p>
         </div>
       </Layout>
     );
@@ -209,19 +213,24 @@ const Tasks = () => {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-4">
+      <div className="px-4 sm:px-0 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm p-4 rounded-2xl shadow-sm border border-white/20 dark:border-gray-700">
+          <div className="flex items-center space-x-4 w-full md:w-auto">
+            <div className="bg-purple-100 dark:bg-purple-900/50 p-3 rounded-xl">
+              <List className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+            </div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Tareas</h2>
-            
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
             {/* Toggle de Vistas */}
-            <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+            <div className="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1 w-full sm:w-auto">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   viewMode === 'list'
-                    ? 'bg-white dark:bg-gray-600 text-purple-700 dark:text-purple-300 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-300 shadow-md transform scale-105'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
                 <List className="w-4 h-4 mr-2" />
@@ -229,162 +238,197 @@ const Tasks = () => {
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   viewMode === 'calendar'
-                    ? 'bg-white dark:bg-gray-600 text-purple-700 dark:text-purple-300 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-300 shadow-md transform scale-105'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
               >
                 <CalendarIcon className="w-4 h-4 mr-2" />
                 Calendario
               </button>
             </div>
-          </div>
 
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow-md"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
-          </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-purple-600/30 hover:shadow-purple-600/40 flex items-center justify-center font-medium group"
+            >
+              <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform" />
+              {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
+            </button>
+          </div>
         </div>
 
         {viewMode === 'list' ? (
           <>
-            {/* Filtros simplificados y grandes (Solo visible en modo lista) */}
-            <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 onClick={() => setFilter('all')}
-                className={`p-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
+                className={`relative overflow-hidden p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 ${
                   filter === 'all'
-                    ? 'text-white shadow-lg'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-700'
+                    ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-xl shadow-purple-600/20'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 shadow-sm'
                 }`}
-                style={filter === 'all' ? {backgroundColor: '#663399'} : {}}
               >
-                <div className="text-3xl mb-2">📋</div>
-                Todas las Tareas
-                <div className="text-sm mt-1 opacity-80">({tasks.length})</div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="text-left">
+                    <p className="text-sm font-medium opacity-80 mb-1">Total</p>
+                    <p className="text-2xl font-bold">Todas las Tareas</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${filter === 'all' ? 'bg-white/20' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'}`}>
+                    <List className="w-6 h-6" />
+                  </div>
+                </div>
+                <div className="mt-4 text-left relative z-10">
+                  <span className="text-3xl font-bold">{tasks.length}</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setFilter('pendiente')}
-                className={`p-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
+                className={`relative overflow-hidden p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 ${
                   filter === 'pendiente'
-                    ? 'text-white shadow-lg'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-700'
+                    ? 'bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-xl shadow-yellow-500/20'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 shadow-sm'
                 }`}
-                style={filter === 'pendiente' ? {backgroundColor: '#8844aa'} : {}}
               >
-                <div className="text-3xl mb-2">⏳</div>
-                Por Hacer
-                <div className="text-sm mt-1 opacity-80">({tasks.filter(t => t.status === 'pendiente').length})</div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="text-left">
+                    <p className="text-sm font-medium opacity-80 mb-1">En Progreso</p>
+                    <p className="text-2xl font-bold">Por Hacer</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${filter === 'pendiente' ? 'bg-white/20' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'}`}>
+                    <Clock className="w-6 h-6" />
+                  </div>
+                </div>
+                <div className="mt-4 text-left relative z-10">
+                  <span className="text-3xl font-bold">{tasks.filter(t => t.status === 'pendiente').length}</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setFilter('completada')}
-                className={`p-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
+                className={`relative overflow-hidden p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 ${
                   filter === 'completada'
-                    ? 'text-white shadow-lg'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-700'
+                    ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-xl shadow-green-500/20'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 shadow-sm'
                 }`}
-                style={filter === 'completada' ? {backgroundColor: '#a055cc'} : {}}
               >
-                <div className="text-3xl mb-2">✅</div>
-                Hechas
-                <div className="text-sm mt-1 opacity-80">({tasks.filter(t => t.status === 'completada').length})</div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="text-left">
+                    <p className="text-sm font-medium opacity-80 mb-1">Finalizadas</p>
+                    <p className="text-2xl font-bold">Completadas</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${filter === 'completada' ? 'bg-white/20' : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'}`}>
+                    <Check className="w-6 h-6" />
+                  </div>
+                </div>
+                <div className="mt-4 text-left relative z-10">
+                  <span className="text-3xl font-bold">{tasks.filter(t => t.status === 'completada').length}</span>
+                </div>
               </button>
             </div>
 
             {/* Lista de tareas */}
             <div className="space-y-4">
               {filteredTasks.length === 0 ? (
-                <div className="card text-center py-16 dark:bg-gray-800 dark:border-gray-700">
-                  <div className="text-6xl mb-4">📝</div>
-                  <p className="text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-2">No hay tareas aquí</p>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center py-16 animate-fade-in">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No se encontraron tareas</p>
                   <p className="text-gray-500 dark:text-gray-400">
-                    {filter === 'pendiente' ? '¡Perfecto! No tienes tareas pendientes' : 
-                     filter === 'completada' ? 'Aún no has completado ninguna tarea' :
-                     'Comienza creando tu primera tarea'}
+                    {filter === 'pendiente' ? '¡Todo al día! No tienes tareas pendientes.' : 
+                     filter === 'completada' ? 'Aún no hay tareas completadas.' :
+                     'Comienza creando tu primera tarea para empezar.'}
                   </p>
                 </div>
               ) : (
-                filteredTasks.map((task) => (
-                  <div key={task._id} className={`card hover:shadow-xl transition-all duration-200 dark:bg-gray-800 ${
-                    task.status === 'completada' ? 'bg-green-50 border-2 border-green-200 dark:bg-green-900/10 dark:border-green-800' : 
-                    task.priority === 'alta' ? 'bg-red-50 border-2 border-red-200 dark:bg-red-900/10 dark:border-red-800' : 
-                    'bg-white border-2 border-gray-200 dark:border-gray-700'
-                  }`}>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div className="flex-1 mb-4 md:mb-0">
-                        <div className="flex items-center space-x-3 mb-3">
-                          {getStatusBadge(task.status)}
-                          {getPriorityBadge(task.priority)}
+                <div className="grid gap-4 animate-fade-in-up">
+                  {filteredTasks.map((task) => (
+                    <div key={task._id} className={`group relative bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 dark:border-gray-700 ${
+                      task.status === 'completada' ? 'opacity-75 hover:opacity-100' : ''
+                    }`}>
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-3">
+                            {getStatusBadge(task.status)}
+                            {getPriorityBadge(task.priority)}
+                          </div>
+                          
+                          <h3 className={`text-xl font-bold mb-2 ${
+                            task.status === 'completada' ? 'text-gray-500 line-through dark:text-gray-400' : 'text-gray-900 dark:text-white'
+                          }`}>
+                            {task.title}
+                          </h3>
+
+                          {task.description && (
+                            <p className={`text-base mb-4 ${
+                              task.status === 'completada' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'
+                            }`}>{task.description}</p>
+                          )}
+                          
+                          <div className="flex flex-wrap gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center mr-4">
+                              <CalendarIcon className="w-4 h-4 mr-1.5" />
+                              Creada: {formatDate(task.createdAt)}
+                            </span>
+                            <span className="flex items-center">
+                              <List className="w-4 h-4 mr-1.5" />
+                              Por: {task.createdBy?.fullName}
+                            </span>
+                          </div>
+                          
+                          {task.completedAt && (
+                            <div className="mt-2 text-sm text-green-600 dark:text-green-400 font-medium flex items-center bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-lg w-fit">
+                              <Check className="w-4 h-4 mr-1.5" />
+                              Completada el {formatDate(task.completedAt)} por {task.completedBy?.fullName}
+                            </div>
+                          )}
                         </div>
                         
-                        <h3 className={`text-2xl font-bold mb-2 ${
-                          task.status === 'completada' ? 'text-gray-500 line-through dark:text-gray-400' : 'text-gray-900 dark:text-white'
-                        }`}>
-                          {task.title}
-                        </h3>
-
-                        {task.description && (
-                          <p className={`text-lg mb-3 ${
-                            task.status === 'completada' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'
-                          }`}>{task.description}</p>
-                        )}
-                        
-                        <div className="space-y-1">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Creada por: {task.createdBy?.fullName} - {formatDate(task.createdAt)}
-                          </p>
-                          {task.completedAt && (
-                            <p className="text-sm text-green-700 dark:text-green-400 font-semibold">
-                              ✅ Completada: {formatDate(task.completedAt)} por {task.completedBy?.fullName}
-                            </p>
+                        <div className="flex flex-row md:flex-col gap-2 mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100 dark:border-gray-700">
+                          {task.status === 'pendiente' ? (
+                            <button
+                              onClick={() => handleCompleteTask(task._id)}
+                              className="flex-1 md:w-40 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center font-medium"
+                              title="Marcar como completada"
+                            >
+                              <Check className="w-4 h-4 mr-2" />
+                              Completar
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleReopenTask(task._id)}
+                              className="flex-1 md:w-40 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center font-medium"
+                              title="Volver a pendiente"
+                            >
+                              <RotateCcw className="w-4 h-4 mr-2" />
+                              Reabrir
+                            </button>
+                          )}
+                          {isJefa() && (
+                            <button
+                              onClick={() => handleDeleteTask(task._id)}
+                              className="flex-1 md:w-40 bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 px-4 py-2 rounded-xl transition-colors flex items-center justify-center font-medium"
+                              title="Eliminar tarea"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Eliminar
+                            </button>
                           )}
                         </div>
                       </div>
-                      
-                      <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-2 md:space-y-0 md:space-x-3 ml-0 md:ml-6">
-                        {task.status === 'pendiente' ? (
-                          <button
-                            onClick={() => handleCompleteTask(task._id)}
-                            className="px-6 py-3 text-white rounded-lg transition-colors font-semibold text-lg shadow-md flex items-center justify-center bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
-                            title="Marcar como completada"
-                          >
-                            <Check className="w-6 h-6 mr-2" />
-                            Marcar como Hecha
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleReopenTask(task._id)}
-                            className="px-6 py-3 text-white rounded-lg transition-colors font-semibold text-lg shadow-md flex items-center justify-center bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500"
-                            title="Volver a pendiente"
-                          >
-                            <RotateCcw className="w-6 h-6 mr-2" />
-                            Deshacer
-                          </button>
-                        )}
-                        {isJefa() && (
-                          <button
-                            onClick={() => handleDeleteTask(task._id)}
-                            className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg shadow-md flex items-center justify-center"
-                            title="Eliminar tarea"
-                          >
-                            <Trash2 className="w-6 h-6 mr-2" />
-                            Eliminar
-                          </button>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </>
         ) : (
           /* Vista de Calendario */
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 h-[600px] border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 h-[700px] border border-gray-100 dark:border-gray-700 animate-fade-in">
             <DnDCalendar
               localizer={localizer}
               events={calendarEvents}
@@ -406,77 +450,101 @@ const Tasks = () => {
                 event: "Tarea",
                 noEventsInRange: "Sin tareas en este rango"
               }}
-              className="dark:text-gray-200"
+              className="dark:text-gray-300 custom-calendar"
             />
           </div>
         )}
 
         {/* Modal para crear tarea */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white/20 dark:border-gray-700 transform transition-all scale-100">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                  <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-lg mr-3">
+                    <Plus className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                  </div>
                   {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <form onSubmit={handleCreateTask} className="space-y-4">
+              <form onSubmit={handleCreateTask} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Título *
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Título <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="input-field"
-                    placeholder="Título de la tarea"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow placeholder-gray-400 dark:placeholder-gray-500"
+                    placeholder="Ej: Redactar informe mensual"
                     required
+                    autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Descripción
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="input-field"
-                    placeholder="Detalles de la tarea (opcional)"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow placeholder-gray-400 dark:placeholder-gray-500"
+                    placeholder="Detalles adicionales sobre la tarea..."
                     rows="3"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Prioridad
                   </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="alta">Alta</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, priority: 'normal' })}
+                      className={`px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-center ${
+                        formData.priority === 'normal'
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, priority: 'alta' })}
+                      className={`px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-center ${
+                        formData.priority === 'alta'
+                          ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Alta
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex space-x-3 pt-4">
-                  <button type="submit" className="btn-primary flex-1">
+                  <button 
+                    type="submit" 
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-medium shadow-lg shadow-purple-600/30 transition-all hover:-translate-y-0.5"
+                  >
                     {isJefa() ? 'Crear Tarea' : 'Registrar Tarea'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="btn-secondary flex-1"
+                    className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-medium transition-all"
                   >
                     Cancelar
                   </button>

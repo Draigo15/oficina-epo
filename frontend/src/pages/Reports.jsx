@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { FileDown, Calendar, Eye } from 'lucide-react';
+import { FileDown, Calendar, Eye, FileText } from 'lucide-react';
 
 const Reports = () => {
   const { isJefa } = useAuth();
@@ -43,9 +43,8 @@ const Reports = () => {
 
     const doc = new jsPDF();
     const monthName = months[selectedMonth - 1];
-    const monthNameUpper = monthName.toUpperCase();
     
-    // Número de informe incremental (puedes ajustarlo según necesites)
+    // Número de informe incremental
     const informeNumero = `${String(selectedMonth).padStart(3, '0')}-${selectedYear}`;
 
     // Encabezado formal
@@ -137,12 +136,10 @@ const Reports = () => {
       
       await new Promise((resolve, reject) => {
         firmaImg.onload = () => {
-          // Insertar imagen de firma (ajusta tamaño según necesites)
           doc.addImage(firmaImg, 'PNG', 20, currentY, 50, 15);
           resolve();
         };
         firmaImg.onerror = () => {
-          // Si no se encuentra la imagen, continuamos sin ella
           console.warn('No se pudo cargar la imagen de firma');
           resolve();
         };
@@ -187,45 +184,50 @@ const Reports = () => {
 
   return (
     <Layout>
-      <div className="px-4 sm:px-0">
-        <h2 className="text-3xl font-bold text-gray-900 mb-6">Reportes Mensuales</h2>
+      <div className="px-4 sm:px-0 space-y-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+            <FileText className="w-8 h-8 mr-3 text-purple-600 dark:text-purple-400" />
+            Reportes Mensuales
+          </h2>
+        </div>
 
         {/* Mensaje informativo según el rol */}
         {isJefa() ? (
-          <div className="mb-6 p-4 rounded-lg border-2" style={{backgroundColor: '#f3e8ff', borderColor: '#663399'}}>
-            <div className="flex items-center">
-              <Eye className="w-5 h-5 mr-2" style={{color: '#663399'}} />
-              <p style={{color: '#663399'}} className="font-medium">
-                Como Jefa, puedes visualizar los informes generados por el asistente para supervisión.
-              </p>
+          <div className="rounded-xl p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 flex items-center shadow-sm">
+            <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-lg mr-4">
+              <Eye className="w-6 h-6 text-purple-600 dark:text-purple-300" />
             </div>
+            <p className="font-medium text-purple-800 dark:text-purple-200">
+              Como Jefa, puedes visualizar los informes generados por el asistente para supervisión.
+            </p>
           </div>
         ) : (
-          <div className="mb-6 p-4 rounded-lg border-2" style={{backgroundColor: '#e9f5ff', borderColor: '#0066cc'}}>
-            <div className="flex items-center">
-              <FileDown className="w-5 h-5 mr-2" style={{color: '#0066cc'}} />
-              <p style={{color: '#0066cc'}} className="font-medium">
-                Genera tu informe mensual de actividades para presentar al comité.
-              </p>
+          <div className="rounded-xl p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center shadow-sm">
+            <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg mr-4">
+              <FileDown className="w-6 h-6 text-blue-600 dark:text-blue-300" />
             </div>
+            <p className="font-medium text-blue-800 dark:text-blue-200">
+              Genera tu informe mensual de actividades para presentar al comité.
+            </p>
           </div>
         )}
 
         {/* Selector de mes y año */}
-        <div className="card mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
             {isJefa() ? 'Ver Reporte Mensual' : 'Generar Reporte Mensual'}
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Mes
               </label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="input-field"
+                className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
               >
                 {months.map((month, index) => (
                   <option key={index} value={index + 1}>
@@ -236,13 +238,13 @@ const Reports = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Año
               </label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="input-field"
+                className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
               >
                 {years.map((year) => (
                   <option key={year} value={year}>
@@ -256,7 +258,7 @@ const Reports = () => {
               <button
                 onClick={fetchMonthlyReport}
                 disabled={loading}
-                className="btn-primary w-full flex items-center justify-center"
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl shadow-lg shadow-purple-600/30 hover:shadow-purple-600/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {loading ? (
                   <>
@@ -276,21 +278,21 @@ const Reports = () => {
 
         {/* Vista previa del reporte */}
         {reportData && (
-          <div className="card">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden animate-fade-in-up">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex flex-wrap justify-between items-center gap-4">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   {months[selectedMonth - 1]} {selectedYear}
                 </h3>
-                <p className="text-gray-600 mt-1">
-                  Total de tareas completadas: <span className="font-bold">{reportData.totalTasks}</span>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Total de tareas completadas: <span className="font-bold text-purple-600 dark:text-purple-400">{reportData.totalTasks}</span>
                 </p>
               </div>
               
               {reportData.totalTasks > 0 && !isJefa() && (
                 <button
                   onClick={generatePDF}
-                  className="btn-primary flex items-center"
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-lg shadow-green-600/30 transition-all duration-200 flex items-center"
                 >
                   <FileDown className="w-4 h-4 mr-2" />
                   Descargar PDF
@@ -298,7 +300,7 @@ const Reports = () => {
               )}
 
               {reportData.totalTasks > 0 && isJefa() && (
-                <div className="px-4 py-2 rounded-lg" style={{backgroundColor: '#f3e8ff', color: '#663399'}}>
+                <div className="px-4 py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center">
                     <Eye className="w-4 h-4 mr-2" />
                     <span className="text-sm font-medium">Solo visualización</span>
@@ -308,56 +310,60 @@ const Reports = () => {
             </div>
 
             {reportData.totalTasks === 0 ? (
-              <div className="text-center py-12">
-                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">
+              <div className="text-center py-16">
+                <div className="bg-gray-100 dark:bg-gray-700/50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 text-lg font-medium">
                   No hay tareas completadas en este período
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-900/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         #
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Tarea
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Descripción
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Prioridad
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Completada
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {reportData.tasks.map((task, index) => (
-                      <tr key={task._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      <tr key={task._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
                           {index + 1}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
                           {task.title}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {task.description || 'Sin descripción'}
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                          {task.description || <span className="text-gray-400 italic">Sin descripción</span>}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={
-                              task.priority === 'alta' ? 'badge-alta' : 'badge-normal'
-                            }
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              task.priority === 'alta' 
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' 
+                                : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                            }`}
                           >
                             {task.priority === 'alta' ? 'Alta' : 'Normal'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                           {formatDate(task.completedAt)}
                         </td>
                       </tr>
