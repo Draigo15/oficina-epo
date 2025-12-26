@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, ListChecks, FileText, LogOut, Sun, Moon, Menu, X } from 'lucide-react';
+import { LayoutDashboard, ListChecks, FileText, LogOut, Sun, Moon, Menu, X, User } from 'lucide-react';
 import Notifications from './Notifications';
 
 const Layout = ({ children }) => {
@@ -79,12 +79,17 @@ const Layout = ({ children }) => {
             
             {/* Desktop Right Section */}
             <div className="hidden md:flex items-center space-x-4">
-              <div className="flex flex-col items-end text-sm text-white">
-                <span className="font-bold tracking-wide">{user?.fullName}</span>
-                <span className="text-xs text-purple-200 bg-purple-900/30 px-2 py-0.5 rounded-full">
+              <Link to="/profile" className="flex flex-col items-end text-sm text-white hover:opacity-80 transition-opacity group">
+                <div className="flex items-center">
+                  <span className="font-bold tracking-wide mr-2">{user?.fullName}</span>
+                  <div className="bg-white/10 p-1 rounded-full group-hover:bg-white/20 transition-colors">
+                    <User className="w-4 h-4" />
+                  </div>
+                </div>
+                <span className="text-xs text-purple-200 bg-purple-900/30 px-2 py-0.5 rounded-full mt-0.5">
                   {user?.role === 'jefa' ? 'Jefa' : 'Asistente'}
                 </span>
-              </div>
+              </Link>
               
               <div className="h-8 w-px bg-white/20 mx-2"></div>
 
@@ -133,10 +138,19 @@ const Layout = ({ children }) => {
         {/* Mobile menu */}
         <div className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-purple-900/95 backdrop-blur-xl border-t border-purple-700/50">
-            <div className="px-3 py-2 text-white border-b border-white/10 mb-2">
-              <p className="font-bold">{user?.fullName}</p>
-              <p className="text-sm text-purple-200">{user?.role === 'jefa' ? 'Jefa' : 'Asistente'}</p>
-            </div>
+            <Link 
+              to="/profile"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block px-3 py-2 text-white border-b border-white/10 mb-2 hover:bg-white/10 rounded-md transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold">{user?.fullName}</p>
+                  <p className="text-sm text-purple-200">{user?.role === 'jefa' ? 'Jefa' : 'Asistente'}</p>
+                </div>
+                <User className="w-5 h-5 text-purple-200" />
+              </div>
+            </Link>
             {navigation.map((item) => {
               const Icon = item.icon;
               return (

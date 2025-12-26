@@ -85,4 +85,35 @@ router.get('/me', protect, async (req, res) => {
   });
 });
 
+// @route   PATCH /api/auth/profile
+// @desc    Actualizar perfil de usuario
+// @access  Private
+router.patch('/profile', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      user.fullName = req.body.fullName || user.fullName;
+      
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+
+      const updatedUser = await user.save();
+
+      res.json({
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        role: updatedUser.role,
+        fullName: updatedUser.fullName,
+        token: generateToken(updatedUser._id)
+      });
+    } else {
+      res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar perfil', error: error.message });
+  }
+});
+
 export default router;

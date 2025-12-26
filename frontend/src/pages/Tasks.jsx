@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Calendar as CalendarIcon, List, Search } from 'lucide-react';
+import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Calendar as CalendarIcon, List, Search, Tag } from 'lucide-react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
@@ -17,15 +18,19 @@ const DnDCalendar = withDragAndDrop(Calendar);
 
 const Tasks = () => {
   const { isJefa } = useAuth();
+  const { success, error: toastError } = useToast();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
   const [filter, setFilter] = useState('all'); // all, pendiente, completada
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 'normal'
+    priority: 'normal',
+    category: 'otros',
+    scheduledDate: new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
@@ -38,6 +43,7 @@ const Tasks = () => {
       setTasks(response.data);
     } catch (error) {
       console.error('Error al cargar tareas:', error);
+      toastError('Error al cargar tareas');
     } finally {
       setLoading(false);
     }
@@ -47,12 +53,19 @@ const Tasks = () => {
     e.preventDefault();
     try {
       await api.post('/tasks', formData);
-      setFormData({ title: '', description: '', priority: 'normal' });
+      setFormData({ 
+        title: '', 
+        description: '', 
+        priority: 'normal',
+        category: 'otros',
+        scheduledDate: new Date().toISOString().split('T')[0]
+      });
       setShowModal(false);
       fetchTasks();
+      success('Tarea creada exitosamente');
     } catch (error) {
       console.error('Error al crear tarea:', error);
-      alert('Error al crear la tarea');
+      toastError('Error al crear la tarea');
     }
   };
 
@@ -60,9 +73,10 @@ const Tasks = () => {
     try {
       await api.patch(`/tasks/${taskId}/complete`);
       fetchTasks();
+      success('Tarea marcada como completada');
     } catch (error) {
       console.error('Error al completar tarea:', error);
-      alert('Error al completar la tarea');
+      toastError('Error al completar la tarea');
     }
   };
 
@@ -70,9 +84,10 @@ const Tasks = () => {
     try {
       await api.patch(`/tasks/${taskId}/reopen`);
       fetchTasks();
+      success('Tarea reabierta correctamente');
     } catch (error) {
       console.error('Error al reabrir tarea:', error);
-      alert('Error al reabrir la tarea');
+      toastError('Error al reabrir la tarea');
     }
   };
 
@@ -82,9 +97,10 @@ const Tasks = () => {
     try {
       await api.delete(`/tasks/${taskId}`);
       fetchTasks();
+      success('Tarea eliminada correctamente');
     } catch (error) {
       console.error('Error al eliminar tarea:', error);
-      alert('Error al eliminar la tarea');
+      toastError('Error al eliminar la tarea');
     }
   };
 
@@ -103,10 +119,12 @@ const Tasks = () => {
       
       // Implementación real del backend para reprogramar
       await api.patch(`/tasks/${event.id}/reschedule`, { scheduledDate: start });
+      success('Tarea reprogramada correctamente');
       
     } catch (error) {
       console.error('Error al mover tarea:', error);
       fetchTasks(); // Revertir cambios si falla
+      toastError('Error al reprogramar la tarea');
     }
   };
 
@@ -148,8 +166,18 @@ const Tasks = () => {
   }));
 
   const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true;
-    return task.status === filter;
+    // Filtrar por estado
+    if (filter !== 'all' && task.status !== filter) return false;
+    
+    // Filtrar por búsqueda (título o descripción)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const titleMatch = task.title.toLowerCase().includes(term);
+      const descMatch = task.description?.toLowerCase().includes(term);
+      return titleMatch || descMatch;
+    }
+    
+    return true;
   });
 
   const getStatusBadge = (status) => {
@@ -169,6 +197,24 @@ const Tasks = () => {
       default:
         return null;
     }
+  };
+
+  const getCategoryBadge = (category) => {
+    const categories = {
+      administrativo: { label: 'Administrativo', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+      soporte: { label: 'Soporte', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300' },
+      documentacion: { label: 'Documentación', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+      otros: { label: 'Otros', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' }
+    };
+
+    const config = categories[category] || categories.otros;
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-transparent ${config.color}`}>
+        <Tag className="w-3 h-3 mr-1" />
+        {config.label}
+      </span>
+    );
   };
 
   const getPriorityBadge = (priority) => {
@@ -223,6 +269,28 @@ const Tasks = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
+            {/* Barra de búsqueda */}
+            <div className="relative w-full sm:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar tareas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {/* Toggle de Vistas */}
             <div className="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1 w-full sm:w-auto">
               <button
@@ -355,6 +423,7 @@ const Tasks = () => {
                           <div className="flex items-center space-x-3 mb-3">
                             {getStatusBadge(task.status)}
                             {getPriorityBadge(task.priority)}
+                            {getCategoryBadge(task.category)}
                           </div>
                           
                           <h3 className={`text-xl font-bold mb-2 ${
@@ -501,6 +570,34 @@ const Tasks = () => {
                     placeholder="Detalles adicionales sobre la tarea..."
                     rows="3"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Fecha Programada
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.scheduledDate}
+                    onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Categoría
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+                  >
+                    <option value="otros">Otros</option>
+                    <option value="administrativo">Administrativo</option>
+                    <option value="soporte">Soporte</option>
+                    <option value="documentacion">Documentación</option>
+                  </select>
                 </div>
 
                 <div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -8,6 +9,7 @@ import { FileDown, Calendar, Eye, FileText } from 'lucide-react';
 
 const Reports = () => {
   const { isJefa } = useAuth();
+  const { error: toastError, success: toastSuccess, warning: toastWarning } = useToast();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(false);
@@ -27,9 +29,14 @@ const Reports = () => {
         params: { month: selectedMonth, year: selectedYear }
       });
       setReportData(response.data);
+      if (response.data.totalTasks === 0) {
+        toastWarning('No se encontraron datos para este período');
+      } else {
+        toastSuccess('Reporte cargado correctamente');
+      }
     } catch (error) {
       console.error('Error al cargar reporte:', error);
-      alert('Error al cargar el reporte');
+      toastError('Error al cargar el reporte');
     } finally {
       setLoading(false);
     }
@@ -37,139 +44,209 @@ const Reports = () => {
 
   const generatePDF = async () => {
     if (!reportData || reportData.tasks.length === 0) {
-      alert('No hay datos para generar el reporte');
+      toastWarning('No hay datos para generar el reporte');
       return;
     }
 
-    const doc = new jsPDF();
-    const monthName = months[selectedMonth - 1];
+    try {
+      toastSuccess('Generando PDF...');
+      const doc = new jsPDF();
+      const monthName = months[selectedMonth - 1];
     
-    // Número de informe incremental
-    const informeNumero = `${String(selectedMonth).padStart(3, '0')}-${selectedYear}`;
-
-    // Encabezado formal
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`INFORME GENERAL Nº ${informeNumero}-EPO`, 105, 20, { align: 'center' });
-
-    // Línea separadora
-    doc.setLineWidth(0.3);
-    doc.line(20, 25, 190, 25);
-
-    // Sección DE/PARA
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DE:', 20, 35);
-    doc.setFont('helvetica', 'normal');
-    doc.text('RODRIGO LIRA ALVAREZ', 40, 35);
-    doc.setFontSize(9);
-    doc.text('Practicante del Comité de Mejora Continua', 40, 40);
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PARA:', 20, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('ANGELA AQUIZE DIAZ', 40, 50);
-    doc.setFontSize(9);
-    doc.text('Jefa del Comité de Mejora Continua', 40, 55);
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ASUNTO:', 20, 65);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Informe de Actividades - ${monthName} ${selectedYear}`, 40, 65);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('FECHA:', 20, 75);
-    doc.setFont('helvetica', 'normal');
-    doc.text(new Date().toLocaleDateString('es-PE', { 
-      day: '2-digit', 
-      month: 'long', 
-      year: 'numeric' 
-    }), 40, 75);
-
-    // Línea separadora
-    doc.line(20, 80, 190, 80);
-
-    // Cuerpo del informe
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const introText = `Es grato dirigirme a Usted, para informarle sobre las actividades realizadas en el mes de ${monthName.toLowerCase()} como practicante del Comité de Mejora Continua de la Escuela Profesional de Odontología:`;
-    
-    const splitIntro = doc.splitTextToSize(introText, 170);
-    doc.text(splitIntro, 20, 90);
-
-    // Lista de actividades
-    let currentY = 90 + (splitIntro.length * 5) + 5;
-    
-    reportData.tasks.forEach((task, index) => {
-      // Verificar si necesitamos nueva página
-      if (currentY > 250) {
-        doc.addPage();
-        currentY = 20;
+      // Cargar logo UPT
+      try {
+        const logoImg = new Image();
+        logoImg.src = '/logo_upt.png';
+        await new Promise((resolve) => {
+          logoImg.onload = () => {
+            doc.addImage(logoImg, 'PNG', 15, 10, 25, 25);
+            resolve();
+          };
+          logoImg.onerror = resolve;
+        });
+      } catch (e) {
+        console.warn('No se pudo cargar el logo');
       }
 
-      const taskText = `${index + 1}. ${task.title}${task.description ? ': ' + task.description : ''}`;
-      const splitTask = doc.splitTextToSize(taskText, 170);
-      doc.text(splitTask, 25, currentY);
-      currentY += splitTask.length * 5 + 3;
-    });
+      // Slogan (Centrado, Italic)
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(200, 30, 30); // Color rojo oscuro similar a la imagen (opcional, o negro)
+      doc.setTextColor(0); // Mejor negro estándar
+      doc.text('"Año de la recuperación y consolidación de la economía peruana"', 105, 25, { align: 'center' });
 
-    // Mensaje de cierre
-    currentY += 5;
-    if (currentY > 250) {
-      doc.addPage();
-      currentY = 20;
-    }
-    
-    doc.text('Es todo lo que informo para su conocimiento.', 20, currentY);
-    currentY += 10;
+      // Número de informe
+      const informeNumero = `${String(selectedMonth).padStart(3, '0')}-${selectedYear}`;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`INFORME GENERAL N.º ${informeNumero}-EPO`, 105, 40, { align: 'center' });
+      // Subrayado del título
+      const textWidth = doc.getTextWidth(`INFORME GENERAL N.º ${informeNumero}-EPO`);
+      doc.line(105 - textWidth/2, 41, 105 + textWidth/2, 41);
 
-    doc.setFont('helvetica', 'normal');
-    doc.text('Atentamente,', 20, currentY);
-    currentY += 5;
+      // Configuración de márgenes para sección A/DE
+      const labelX = 25;
+      const colonX = 55;
+      const valueX = 60;
+      let currentY = 55;
 
-    // Cargar e insertar imagen de firma
-    try {
-      const firmaImg = new Image();
-      firmaImg.src = '/firma-rodrigo.png';
+      // Sección A
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('A', labelX, currentY);
+      doc.text(':', colonX, currentY);
       
-      await new Promise((resolve, reject) => {
-        firmaImg.onload = () => {
-          doc.addImage(firmaImg, 'PNG', 20, currentY, 50, 15);
-          resolve();
-        };
-        firmaImg.onerror = () => {
-          console.warn('No se pudo cargar la imagen de firma');
-          resolve();
-        };
+      doc.text('Dra. Nelly Kuong Gómez', valueX, currentY);
+      currentY += 5;
+      doc.setFont('helvetica', 'italic');
+      doc.text('Directora De La Escuela Profesional de Odontología. Dra.', valueX, currentY);
+      currentY += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.text('Angela Aquize Diaz', valueX, currentY);
+      currentY += 5;
+      doc.setFont('helvetica', 'italic');
+      doc.text('Secretaria Técnica CMC - EPO', valueX, currentY);
+      
+      currentY += 10;
+
+      // Sección DE
+      doc.setFont('helvetica', 'normal');
+      doc.text('DE', labelX, currentY);
+      doc.text(':', colonX, currentY);
+      doc.text('Rodrigo Samael Adonai Lira Alvarez', valueX, currentY);
+      currentY += 5;
+      doc.setFont('helvetica', 'italic');
+      doc.text('Practicante Soporte Técnico CMC-EPO', valueX, currentY);
+
+      currentY += 10;
+
+      // Sección ASUNTO
+      doc.setFont('helvetica', 'normal');
+      doc.text('ASUNTO', labelX, currentY);
+      doc.text(':', colonX, currentY);
+      doc.text(`INFORME DE ACTIVIDADES DEL MES DE ${monthName.toUpperCase()}`, valueX, currentY);
+
+      currentY += 10;
+
+      // Sección FECHA
+      doc.text('FECHA', labelX, currentY);
+      doc.text(':', colonX, currentY);
+      const fechaStr = new Date().toLocaleDateString('es-PE', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
       });
+      doc.text(`${fechaStr}`, valueX, currentY);
+
+      currentY += 5;
+      // Línea separadora
+      doc.setLineWidth(0.5);
+      doc.line(25, currentY, 185, currentY);
+
+      currentY += 15;
+
+      // Cuerpo del informe
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const introText = `Es grato dirigirme a Usted, para informarle sobre las actividades realizadas en el mes de ${monthName.toLowerCase()} como practicante del Comité de Mejora Continua de la Escuela Profesional de Odontología:`;
       
-      currentY += 15;
+      const splitIntro = doc.splitTextToSize(introText, 160);
+      doc.text(splitIntro, 25, currentY);
+
+      // Lista de actividades
+      currentY += (splitIntro.length * 6) + 5;
+      
+      reportData.tasks.forEach((task) => {
+        // Verificar espacio
+        if (currentY > 250) {
+          doc.addPage();
+          currentY = 30;
+        }
+
+        // Título de la actividad (Italic)
+        doc.setFont('helvetica', 'italic');
+        const titleText = `o   ${task.title}`;
+        const splitTitle = doc.splitTextToSize(titleText, 160);
+        doc.text(splitTitle, 30, currentY);
+        currentY += splitTitle.length * 5;
+
+        // Descripción (Indented, Italic)
+        if (task.description) {
+          doc.setFontSize(10);
+          const descText = task.description;
+          const splitDesc = doc.splitTextToSize(descText, 150);
+          doc.text(splitDesc, 40, currentY);
+          currentY += splitDesc.length * 5 + 5; // Espacio extra entre items
+          doc.setFontSize(11);
+        } else {
+          currentY += 5;
+        }
+      });
+
+      // Mensaje de cierre
+      currentY += 5;
+      if (currentY > 240) {
+        doc.addPage();
+        currentY = 30;
+      }
+      
+      doc.setFont('helvetica', 'italic');
+      doc.text('Es todo lo que informo para su conocimiento.', 105, currentY, { align: 'center' });
+      currentY += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('Atentamente,', 25, currentY);
+      currentY += 5;
+
+      // Cargar e insertar imagen de firma
+      try {
+        const firmaImg = new Image();
+        firmaImg.src = '/firma-rodrigo.png';
+        
+        await new Promise((resolve) => {
+          firmaImg.onload = () => {
+            // Centrar firma
+            doc.addImage(firmaImg, 'PNG', 80, currentY, 50, 25);
+            resolve();
+          };
+          firmaImg.onerror = () => {
+            console.warn('No se pudo cargar la imagen de firma');
+            resolve();
+          };
+        });
+        
+        currentY += 30;
+      } catch (error) {
+        console.warn('Error al cargar firma:', error);
+        currentY += 30;
+      }
+
+      // Línea y nombre del practicante (Centrado)
+      doc.line(75, currentY, 135, currentY);
+      currentY += 5;
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(10);
+      doc.text('Rodrigo Samael Adonai Lira Alvarez', 105, currentY, { align: 'center' });
+      currentY += 5;
+      doc.text('Practicante Soporte Técnico CMC-EPO', 105, currentY, { align: 'center' });
+
+      // Pie de página con datos bancarios (Bottom Left)
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Nota: Scotiabank', 25, pageHeight - 25);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Nro. de Cuenta: 740- 8432420', 25, pageHeight - 20);
+      doc.text('CCI: 009-417-207408432420-74', 25, pageHeight - 15);
+
+      // Guardar PDF
+      const fileName = `INFORME_${informeNumero}_RSALA.pdf`;
+      doc.save(fileName);
+      toastSuccess('PDF generado exitosamente');
     } catch (error) {
-      console.warn('Error al cargar firma:', error);
-      currentY += 15;
+      console.error('Error al generar PDF:', error);
+      toastError('Error al generar el PDF');
     }
-
-    // Línea y nombre del practicante
-    currentY += 5;
-    doc.line(20, currentY, 80, currentY);
-    currentY += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.text('RODRIGO LIRA ALVAREZ', 20, currentY);
-    currentY += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text('Practicante', 20, currentY);
-
-    // Pie de página en la última página
-    doc.setFontSize(7);
-    doc.setTextColor(128);
-    doc.text('Escuela Profesional de Odontología - Comité de Mejora Continua', 105, 285, { align: 'center' });
-
-    // Guardar PDF
-    const fileName = `INFORME_${informeNumero}_EPO.pdf`;
-    doc.save(fileName);
   };
 
   const formatDate = (date) => {

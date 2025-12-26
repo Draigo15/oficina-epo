@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, Calendar } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, isJefa } = useAuth();
@@ -106,6 +106,43 @@ const Dashboard = () => {
                   Ver Tareas Urgentes
                 </button>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Próximas Tareas */}
+        {stats?.upcomingTasks?.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                <Calendar className="w-6 h-6 text-purple-600 mr-2" />
+                Próximas Tareas
+              </h3>
+            </div>
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {stats.upcomingTasks.map((task) => (
+                <div key={task._id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">{task.title}</p>
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-1 space-x-3">
+                       <span className="flex items-center">
+                         <Calendar className="w-3 h-3 mr-1" />
+                         {new Date(task.scheduledDate).toLocaleDateString()}
+                       </span>
+                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                         task.priority === 'alta' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                         task.priority === 'media' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                         'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                       }`}>
+                         {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                       </span>
+                    </div>
+                  </div>
+                  <Link to="/tasks" className="text-purple-600 hover:text-purple-700 font-medium text-sm">
+                    Ir a Tareas
+                  </Link>
+                </div>
+              ))}
             </div>
           </div>
         )}

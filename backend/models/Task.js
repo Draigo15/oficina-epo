@@ -17,6 +17,11 @@ const taskSchema = new mongoose.Schema({
     enum: ['normal', 'alta'],
     default: 'normal'
   },
+  category: {
+    type: String,
+    enum: ['administrativo', 'soporte', 'documentacion', 'otros'],
+    default: 'otros'
+  },
   status: {
     type: String,
     enum: ['pendiente', 'completada'],
