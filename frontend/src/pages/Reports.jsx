@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { FileDown, Calendar } from 'lucide-react';
+import { FileDown, Calendar, Eye } from 'lucide-react';
 
 const Reports = () => {
+  const { isJefa } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(false);
@@ -188,10 +190,31 @@ const Reports = () => {
       <div className="px-4 sm:px-0">
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Reportes Mensuales</h2>
 
+        {/* Mensaje informativo según el rol */}
+        {isJefa() ? (
+          <div className="mb-6 p-4 rounded-lg border-2" style={{backgroundColor: '#f3e8ff', borderColor: '#663399'}}>
+            <div className="flex items-center">
+              <Eye className="w-5 h-5 mr-2" style={{color: '#663399'}} />
+              <p style={{color: '#663399'}} className="font-medium">
+                Como Jefa, puedes visualizar los informes generados por el asistente para supervisión.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 rounded-lg border-2" style={{backgroundColor: '#e9f5ff', borderColor: '#0066cc'}}>
+            <div className="flex items-center">
+              <FileDown className="w-5 h-5 mr-2" style={{color: '#0066cc'}} />
+              <p style={{color: '#0066cc'}} className="font-medium">
+                Genera tu informe mensual de actividades para presentar al comité.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Selector de mes y año */}
         <div className="card mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Generar Reporte Mensual
+            {isJefa() ? 'Ver Reporte Mensual' : 'Generar Reporte Mensual'}
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,7 +287,7 @@ const Reports = () => {
                 </p>
               </div>
               
-              {reportData.totalTasks > 0 && (
+              {reportData.totalTasks > 0 && !isJefa() && (
                 <button
                   onClick={generatePDF}
                   className="btn-primary flex items-center"
@@ -272,6 +295,15 @@ const Reports = () => {
                   <FileDown className="w-4 h-4 mr-2" />
                   Descargar PDF
                 </button>
+              )}
+
+              {reportData.totalTasks > 0 && isJefa() && (
+                <div className="px-4 py-2 rounded-lg" style={{backgroundColor: '#f3e8ff', color: '#663399'}}>
+                  <div className="flex items-center">
+                    <Eye className="w-4 h-4 mr-2" />
+                    <span className="text-sm font-medium">Solo visualización</span>
+                  </div>
+                </div>
               )}
             </div>
 
