@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 text-white rounded-lg transition-colors duration-200 font-medium focus:outline-none 
+           focus:ring-2 focus:ring-offset-2;
+    background: linear-gradient(to right, #663399, #7d3eb8);
+    box-shadow: 0 2px 4px rgba(102, 51, 153, 0.2);
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(to right, #552288, #663399);
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 
+           transition-colors duration-200 font-medium focus:outline-none 
+           focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 
+           transition-colors duration-200 font-medium focus:outline-none 
+           focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg 
+           focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200;
+    focus: ring-color: #663399;
+  }
+  
+  .input-field:focus {
+    border-color: #663399;
+    box-shadow: 0 0 0 3px rgba(102, 51, 153, 0.1);
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+
+  .badge-alta {
+    @apply inline-block px-2 py-1 text-xs font-semibold rounded-full 
+           bg-red-100 text-red-800;
+  }
+
+  .badge-normal {
+    @apply inline-block px-2 py-1 text-xs font-semibold rounded-full;
+    background-color: #f3e8ff;
+    color: #663399;
+  }
+
+  .badge-completada {
+    @apply inline-block px-2 py-1 text-xs font-semibold rounded-full;
+    background-color: #faf5ff;
+    color: #8844aa;
+  }
+
+  .badge-pendiente {
+    @apply inline-block px-2 py-1 text-xs font-semibold rounded-full;
+    background-color: #e9d5ff;
+    color: #7d3eb8;
+  }
+}
