@@ -162,4 +162,30 @@ router.delete('/:id', protect, isJefa, async (req, res) => {
   }
 });
 
+// @route   PATCH /api/tasks/:id/reschedule
+// @desc    Reprogramar fecha de tarea
+// @access  Private
+router.patch('/:id/reschedule', protect, async (req, res) => {
+  try {
+    const { scheduledDate } = req.body;
+    
+    if (!scheduledDate) {
+      return res.status(400).json({ message: 'Se requiere una fecha' });
+    }
+
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Tarea no encontrada' });
+    }
+
+    task.scheduledDate = scheduledDate;
+    await task.save();
+
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al reprogramar tarea', error: error.message });
+  }
+});
+
 export default router;
