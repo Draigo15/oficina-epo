@@ -302,7 +302,7 @@ const Reports = () => {
                 </p>
               </div>
               
-              {reportData.totalTasks > 0 && !isJefa() && (
+              {reportData.totalTasks > 0 && (
                 <button
                   onClick={generatePDF}
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-lg shadow-green-600/30 transition-all duration-200 flex items-center"
@@ -310,15 +310,6 @@ const Reports = () => {
                   <FileDown className="w-4 h-4 mr-2" />
                   Descargar PDF
                 </button>
-              )}
-
-              {reportData.totalTasks > 0 && isJefa() && (
-                <div className="px-4 py-2 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                  <div className="flex items-center">
-                    <Eye className="w-4 h-4 mr-2" />
-                    <span className="text-sm font-medium">Solo visualización</span>
-                  </div>
-                </div>
               )}
             </div>
 

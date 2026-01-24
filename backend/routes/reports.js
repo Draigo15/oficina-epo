@@ -73,5 +73,98 @@ router.get('/stats', protect, async (req, res) => {
     });
   }
 });
+aaaaaaaaaaaaaaaaaaaaa
+// @route   GET /api/reports/productivity
+// @desc    Obtener tareas completadas por mes (últimos 6 meses)
+// @access  Private
+router.get('/productivity', protect, async (req, res) => {
+  try {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    
+    const monthlyData = [];
+    
+    // Generar datos para los últimos 6 meses
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const startDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      const endDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      const completedCount = await Task.countDocuments({
+        status: 'completada',
+        completedAt: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      });
+      
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      
+      monthlyData.push({
+        month: monthNames[monthDate.getMonth()],
+        completadas: completedCount,
+        year: monthDate.getFullYear()
+      });
+    }
+    
+    res.json(monthlyData);
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Error al obtener datos de productividad', 
+      error: error.message 
+    });
+  }
+});
+
+// @route   GET /api/reports/urgent-tasks
+// @desc    Obtener tareas urgentes (vencidas, hoy, mañana)
+// @access  Private
+router.get('/urgent-tasks', protect, async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const endOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59);
+    
+    // Tareas vencidas
+    const overdueTasks = await Task.find({
+      status: 'pendiente',
+      dueDate: { $lt: startOfToday }
+    })
+      .populate('createdBy', 'fullName')
+      .sort({ dueDate: 1 })
+      .limit(5);
+    
+    // Tareas que vencen hoy
+    const todayTasks = await Task.find({
+      status: 'pendiente',
+      dueDate: { $gte: startOfToday, $lte: endOfToday }
+    })
+      .populate('createdBy', 'fullName')
+      .sort({ priority: -1 })
+      .limit(5);
+    
+    // Tareas que vencen mañana
+    const tomorrowTasks = await Task.find({
+      status: 'pendiente',
+      dueDate: { $gt: endOfToday, $lte: endOfTomorrow }
+    })
+      .populate('createdBy', 'fullName')
+      .sort({ priority: -1 })
+      .limit(5);
+    
+    res.json({
+      overdue: overdueTasks,
+      today: todayTasks,
+      tomorrow: tomorrowTasks,
+      totalUrgent: overdueTasks.length + todayTasks.length + tomorrowTasks.length
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Error al obtener tareas urgentes', 
+      error: error.message 
+    });
+  }
+});
 
 export default router;

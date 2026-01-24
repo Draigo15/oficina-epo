@@ -3,8 +3,9 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Search, Edit2, List, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Search, Edit2, List, Calendar as CalendarIcon, LayoutGrid } from 'lucide-react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import moment from 'moment';
 import 'moment/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -24,8 +25,9 @@ const Tasks = () => {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState('all'); // all, pendiente, completada
+  const [timePeriod, setTimePeriod] = useState('month'); // 'all', 'week', 'month'
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('list'); // 'list' o 'calendar'
+  const [viewMode, setViewMode] = useState('list'); // 'list', 'calendar', 'kanban'
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -171,6 +173,24 @@ const Tasks = () => {
     // Filtrar por estado
     if (filter !== 'all' && task.status !== filter) return false;
     
+    // Filtrar por período de tiempo
+    if (timePeriod !== 'all') {
+      const now = moment();
+      const taskDate = task.dueDate ? moment(task.dueDate) : moment(task.createdAt);
+      
+      if (timePeriod === 'week') {
+        // Esta semana (lunes a domingo)
+        const weekStart = now.clone().startOf('week');
+        const weekEnd = now.clone().endOf('week');
+        if (!taskDate.isBetween(weekStart, weekEnd, null, '[]')) return false;
+      } else if (timePeriod === 'month') {
+        // Este mes
+        const monthStart = now.clone().startOf('month');
+        const monthEnd = now.clone().endOf('month');
+        if (!taskDate.isBetween(monthStart, monthEnd, null, '[]')) return false;
+      }
+    }
+    
     // Filtrar por búsqueda
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -267,6 +287,112 @@ const Tasks = () => {
     }
   };
 
+  // Manejar drag & drop en Kanban
+  const handleDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
+
+    // Si no hay destino, no hacer nada
+    if (!destination) return;
+
+    // Si es el mismo lugar, no hacer nada
+    if (source.droppableId === destination.droppableId && 
+        source.index === destination.index) return;
+
+    // Mapear droppableId a status
+    const statusMap = {
+      'pendiente': 'pendiente',
+      'completada': 'completada'
+    };
+
+    const newStatus = statusMap[destination.droppableId];
+    
+    try {
+      // Si se mueve a completada, marcar como completa
+      if (newStatus === 'completada') {
+        await api.patch(`/tasks/${draggableId}/complete`);
+        success('Tarea marcada como completada');
+      } else if (newStatus === 'pendiente') {
+        // Si se mueve a pendiente desde completada, reabrir
+        await api.patch(`/tasks/${draggableId}/reopen`);
+        success('Tarea reabierta');
+      }
+      
+      fetchTasks();
+    } catch (err) {
+      console.error('Error al actualizar tarea:', err);
+      error('Error al mover la tarea');
+    }
+  };
+
+  // Agrupar tareas para Kanban
+  const tasksByStatus = {
+    pendiente: tasks.filter(t => t.status === 'pendiente' && (filter === 'all' || t.status === filter)),
+    completada: tasks.filter(t => t.status === 'completada' && (filter === 'all' || t.status === filter))
+  };
+
+  // Componente para tarjeta de tarea en Kanban
+  const KanbanTaskCard = ({ task, index }) => (
+    <Draggable draggableId={task._id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className={`bg-white dark:bg-gray-700 rounded-lg p-4 mb-3 shadow-md border-l-4 cursor-grab active:cursor-grabbing transition-all ${
+            snapshot.isDragging ? 'shadow-lg scale-105' : ''
+          } ${task.priority === 'alta' ? 'border-red-500' : 'border-purple-500'}`}
+        >
+          <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">{task.title}</h4>
+          {task.description && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
+          )}
+          <div className="flex items-center justify-between text-xs">
+            <span className={`px-2 py-1 rounded-full ${
+              task.priority === 'alta' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' 
+              : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+            }`}>
+              {task.priority === 'alta' ? '🔴 Urgente' : '🟣 Normal'}
+            </span>
+            {task.dueDate && (
+              <span className={`${isOverdue(task) ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+                📅 {formatDateOnly(task.dueDate)}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </Draggable>
+  );
+
+  // Columna Kanban
+  const KanbanColumn = ({ title, status, tasks, icon }) => (
+    <Droppable droppableId={status}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+          className={`bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 min-h-96 transition-colors ${
+            snapshot.isDraggingOver ? 'bg-purple-100 dark:bg-purple-900/30' : ''
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">{icon}</span>
+            <h3 className="font-bold text-gray-900 dark:text-white">{title}</h3>
+            <span className="ml-auto bg-purple-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              {tasks.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {tasks.map((task, index) => (
+              <KanbanTaskCard key={task._id} task={task} index={index} />
+            ))}
+          </div>
+          {provided.placeholder}
+        </div>
+      )}
+    </Droppable>
+  );
+
   if (loading) {
     return (
       <Layout>
@@ -342,6 +468,17 @@ const Tasks = () => {
             <CalendarIcon className="w-5 h-5" />
             Calendario
           </button>
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-md font-semibold transition-all ${
+              viewMode === 'kanban'
+                ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+            }`}
+          >
+            <LayoutGrid className="w-5 h-5" />
+            Kanban
+          </button>
         </div>
 
         {viewMode === 'list' ? (
@@ -388,6 +525,42 @@ const Tasks = () => {
             <div className="text-sm mt-1 opacity-80">({tasks.filter(t => t.status === 'completada').length})</div>
           </button>
         </div>
+
+        {/* Filtros de Período de Tiempo - Solo en vista Lista */}
+        {viewMode === 'list' && (
+          <div className="mb-6 flex gap-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg w-fit">
+            <button
+              onClick={() => setTimePeriod('all')}
+              className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                timePeriod === 'all'
+                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+              }`}
+            >
+              📅 Todas
+            </button>
+            <button
+              onClick={() => setTimePeriod('week')}
+              className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                timePeriod === 'week'
+                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+              }`}
+            >
+              📆 Esta Semana
+            </button>
+            <button
+              onClick={() => setTimePeriod('month')}
+              className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                timePeriod === 'month'
+                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+              }`}
+            >
+              📆 Este Mes
+            </button>
+          </div>
+        )}
 
             {/* Lista de tareas */}
             <div className="space-y-4">
@@ -522,7 +695,7 @@ const Tasks = () => {
           )}
             </div>
           </>
-        ) : (
+        ) : viewMode === 'calendar' ? (
           /* Vista de Calendario */
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6" style={{ height: '700px' }}>
             <Calendar
@@ -551,6 +724,24 @@ const Tasks = () => {
               defaultView="month"
             />
           </div>
+        ) : (
+          /* Vista de Kanban */
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <KanbanColumn 
+                title="Por Hacer"
+                status="pendiente"
+                tasks={tasksByStatus.pendiente}
+                icon="📋"
+              />
+              <KanbanColumn 
+                title="Completadas"
+                status="completada"
+                tasks={tasksByStatus.completada}
+                icon="✅"
+              />
+            </div>
+          </DragDropContext>
         )}
 
         {/* Modal para crear tarea */}
