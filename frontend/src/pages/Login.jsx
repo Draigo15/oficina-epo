@@ -20,10 +20,11 @@ const Login = () => {
     const result = await login(username, password);
 
     if (result.success) {
-      toastSuccess(`¡Bienvenido de nuevo, ${result.user.fullName}!`);
+      const userName = result.user?.fullName || username;
+      toastSuccess(`¡Bienvenido de nuevo, ${userName}!`);
       navigate('/dashboard');
     } else {
-      toastError(result.message);
+      toastError(result.message || 'Error al iniciar sesión');
     }
 
     setLoading(false);
