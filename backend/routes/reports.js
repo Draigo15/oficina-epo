@@ -73,7 +73,6 @@ router.get('/stats', protect, async (req, res) => {
     });
   }
 });
-aaaaaaaaaaaaaaaaaaaaa
 // @route   GET /api/reports/productivity
 // @desc    Obtener tareas completadas por mes (últimos 6 meses)
 // @access  Private
@@ -102,7 +101,7 @@ router.get('/productivity', protect, async (req, res) => {
       
       monthlyData.push({
         month: monthNames[monthDate.getMonth()],
-        completadas: completedCount,
+        completed: completedCount,
         year: monthDate.getFullYear()
       });
     }

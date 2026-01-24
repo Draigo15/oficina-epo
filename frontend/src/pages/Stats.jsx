@@ -20,8 +20,19 @@ const Stats = () => {
         api.get('/reports/stats'),
         api.get('/reports/productivity')
       ]);
-      setStats(sRes.data);
-      setProductivity(pRes.data);
+      // Normalizar claves del backend a las usadas por la vista
+      const s = sRes.data || {};
+      setStats({
+        total: s.totalTasks ?? s.total ?? 0,
+        pending: s.pendingTasks ?? s.pending ?? 0,
+        completed: s.completedTasks ?? s.completed ?? 0,
+        highPriority: s.highPriorityTasks ?? s.highPriority ?? 0,
+      });
+      const prod = Array.isArray(pRes.data) ? pRes.data.map((d) => ({
+        ...d,
+        completed: d.completed ?? d.completadas ?? 0,
+      })) : [];
+      setProductivity(prod);
     } catch (err) {
       console.error('Error cargando estadísticas', err);
       toastError('No se pudieron cargar las estadísticas');
@@ -78,7 +89,7 @@ const Stats = () => {
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Productividad (últimos 6 meses)</h3>
               </div>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={256} minWidth={0}>
                   <BarChart data={productivity} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <XAxis dataKey="month" tick={{ fill: '#9ca3af' }} />
                     <YAxis tick={{ fill: '#9ca3af' }} />
