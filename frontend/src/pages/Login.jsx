@@ -53,26 +53,26 @@ const Login = () => {
         </div>
 
         {/* Formulario */}
-        <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 dark:border-gray-700 transform transition-all hover:scale-[1.01] duration-300">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 transform transition-all hover:scale-[1.01] duration-300">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Bienvenido</h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">Inicia sesión para gestionar tus tareas</p>
+            <h2 className="text-3xl font-bold text-gray-800">Bienvenido</h2>
+            <p className="text-gray-500 mt-2">Inicia sesión para gestionar tus tareas</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="group">
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
                 Usuario
               </label>
               <div className="relative transition-all duration-300 focus-within:transform focus-within:scale-[1.02]">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-purple-500 group-focus-within:text-purple-600 dark:text-purple-400" />
+                  <User className="h-5 w-5 text-purple-500 group-focus-within:text-purple-600" />
                 </div>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="input-field pl-12 py-3 bg-gray-50 border-gray-200 focus:bg-white dark:bg-gray-700 dark:border-gray-600"
+                  className="input-field pl-12 py-3 bg-gray-50 border-gray-200 focus:bg-white text-gray-900 placeholder-gray-400"
                   placeholder="Ej: jefa"
                   required
                   autoFocus
@@ -81,25 +81,25 @@ const Login = () => {
             </div>
 
             <div className="group">
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 ml-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
                 Contraseña
               </label>
               <div className="relative transition-all duration-300 focus-within:transform focus-within:scale-[1.02]">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-purple-500 group-focus-within:text-purple-600 dark:text-purple-400" />
+                  <Lock className="h-5 w-5 text-purple-500 group-focus-within:text-purple-600" />
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-12 pr-12 py-3 bg-gray-50 border-gray-200 focus:bg-white dark:bg-gray-700 dark:border-gray-600"
+                  className="input-field pl-12 pr-12 py-3 bg-gray-50 border-gray-200 focus:bg-white text-gray-900 placeholder-gray-400"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-purple-600 transition-colors cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -135,10 +135,10 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+          <div className="mt-8 pt-6 border-t border-gray-100">
             <div className="flex items-center justify-center space-x-2 opacity-75 hover:opacity-100 transition-opacity">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center font-medium">
+              <p className="text-xs text-gray-500 text-center font-medium">
                 Sistema Operativo v1.0 • EPO
               </p>
             </div>
