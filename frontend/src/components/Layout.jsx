@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { LayoutDashboard, ListChecks, FileText, LogOut, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, ListChecks, FileText, BarChart3, Bell, LogOut, Moon, Sun } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -12,6 +12,8 @@ const Layout = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Tareas', href: '/tasks', icon: ListChecks },
     { name: 'Reportes', href: '/reports', icon: FileText },
+    { name: 'Estadísticas', href: '/stats', icon: BarChart3 },
+    { name: 'Notificaciones', href: '/notifications', icon: Bell },
   ];
 
   const isActive = (path) => location.pathname === path;

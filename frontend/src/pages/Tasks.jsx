@@ -324,10 +324,10 @@ const Tasks = () => {
     }
   };
 
-  // Agrupar tareas para Kanban
+  // Agrupar tareas para Kanban (respetando filtros de estado, búsqueda y período)
   const tasksByStatus = {
-    pendiente: tasks.filter(t => t.status === 'pendiente' && (filter === 'all' || t.status === filter)),
-    completada: tasks.filter(t => t.status === 'completada' && (filter === 'all' || t.status === filter))
+    pendiente: filteredTasks.filter(t => t.status === 'pendiente'),
+    completada: filteredTasks.filter(t => t.status === 'completada')
   };
 
   // Componente para tarjeta de tarea en Kanban
@@ -726,8 +726,43 @@ const Tasks = () => {
           </div>
         ) : (
           /* Vista de Kanban */
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <>
+            {/* Filtros de Período de Tiempo - También en Kanban */}
+            <div className="mb-6 flex gap-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg w-fit">
+              <button
+                onClick={() => setTimePeriod('all')}
+                className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                  timePeriod === 'all'
+                    ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                }`}
+              >
+                📅 Todas
+              </button>
+              <button
+                onClick={() => setTimePeriod('week')}
+                className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                  timePeriod === 'week'
+                    ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                }`}
+              >
+                📆 Esta Semana
+              </button>
+              <button
+                onClick={() => setTimePeriod('month')}
+                className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                  timePeriod === 'month'
+                    ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                }`}
+              >
+                📆 Este Mes
+              </button>
+            </div>
+
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <KanbanColumn 
                 title="Por Hacer"
                 status="pendiente"
@@ -740,8 +775,9 @@ const Tasks = () => {
                 tasks={tasksByStatus.completada}
                 icon="✅"
               />
-            </div>
-          </DragDropContext>
+              </div>
+            </DragDropContext>
+          </>
         )}
 
         {/* Modal para crear tarea */}

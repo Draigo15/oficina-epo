@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+import Stats from './pages/Stats';
+import NotificationsCenter from './pages/NotificationsCenter';
 
 function App() {
   return (
@@ -38,6 +40,22 @@ function App() {
               element={
                 <PrivateRoute>
                   <Reports />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/stats"
+              element={
+                <PrivateRoute>
+                  <Stats />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <PrivateRoute>
+                  <NotificationsCenter />
                 </PrivateRoute>
               }
             />
