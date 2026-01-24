@@ -20,7 +20,7 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Navbar */}
       <nav className="shadow-sm border-b dark:border-gray-700" style={{background: 'linear-gradient(to right, #663399, #7d3eb8)', borderBottomColor: '#552288'}}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
@@ -80,7 +80,7 @@ const Layout = ({ children }) => {
       </nav>
 
       {/* Contenido principal */}
-      <main className="py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-screen-2xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {children}
       </main>
     </div>
