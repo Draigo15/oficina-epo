@@ -22,6 +22,10 @@ const taskSchema = new mongoose.Schema({
     enum: ['pendiente', 'completada'],
     default: 'pendiente'
   },
+  dueDate: {
+    type: Date,
+    required: false
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

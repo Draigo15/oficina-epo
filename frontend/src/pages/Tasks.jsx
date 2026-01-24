@@ -3,7 +3,15 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Search, Edit2 } from 'lucide-react';
+import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Search, Edit2, List, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
+import moment from 'moment';
+import 'moment/locale/es';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+// Configurar moment en español
+moment.locale('es');
+const localizer = momentLocalizer(moment);
 
 const Tasks = () => {
   const { isJefa } = useAuth();
@@ -17,10 +25,12 @@ const Tasks = () => {
   const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState('all'); // all, pendiente, completada
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState('list'); // 'list' o 'calendar'
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 'normal'
+    priority: 'normal',
+    dueDate: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -70,7 +80,7 @@ const Tasks = () => {
     
     try {
       await api.post('/tasks', formData);
-      setFormData({ title: '', description: '', priority: 'normal' });
+      setFormData({ title: '', description: '', priority: 'normal', dueDate: '' });
       setFormErrors({});
       setShowModal(false);
       fetchTasks();
@@ -91,7 +101,7 @@ const Tasks = () => {
     
     try {
       await api.put(`/tasks/${editingTask._id}`, formData);
-      setFormData({ title: '', description: '', priority: 'normal' });
+      setFormData({ title: '', description: '', priority: 'normal', dueDate: '' });
       setFormErrors({});
       setShowEditModal(false);
       setEditingTask(null);
@@ -108,7 +118,8 @@ const Tasks = () => {
     setFormData({
       title: task.title,
       description: task.description || '',
-      priority: task.priority
+      priority: task.priority,
+      dueDate: task.dueDate ? moment(task.dueDate).format('YYYY-MM-DD') : ''
     });
     setFormErrors({});
     setShowEditModal(true);
@@ -181,6 +192,81 @@ const Tasks = () => {
     });
   };
 
+  const formatDateOnly = (date) => {
+    return new Date(date).toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Verificar si una tarea está vencida
+  const isOverdue = (task) => {
+    if (!task.dueDate || task.status === 'completada') return false;
+    return new Date(task.dueDate) < new Date();
+  };
+
+  // Verificar si una tarea vence pronto (en los próximos 3 días)
+  const isDueSoon = (task) => {
+    if (!task.dueDate || task.status === 'completada') return false;
+    const dueDate = new Date(task.dueDate);
+    const today = new Date();
+    const threeDaysFromNow = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+    return dueDate >= today && dueDate <= threeDaysFromNow;
+  };
+
+  // Convertir tareas a eventos del calendario
+  const calendarEvents = tasks.map(task => {
+    // Usar dueDate si existe, sino createdAt
+    const eventDate = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt);
+    
+    return {
+      id: task._id,
+      title: task.title,
+      start: eventDate,
+      end: eventDate,
+      resource: task,
+      allDay: true
+    };
+  });
+
+  // Estilos personalizados para los eventos del calendario
+  const eventStyleGetter = (event) => {
+    const task = event.resource;
+    let backgroundColor = '#663399'; // morado por defecto
+    
+    if (task.status === 'completada') {
+      backgroundColor = '#10b981'; // verde
+    } else if (isOverdue(task)) {
+      backgroundColor = '#dc2626'; // rojo oscuro para vencidas
+    } else if (task.priority === 'alta') {
+      backgroundColor = '#ef4444'; // rojo
+    } else if (isDueSoon(task)) {
+      backgroundColor = '#f59e0b'; // naranja para que vence pronto
+    }
+    
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: '5px',
+        opacity: 0.9,
+        color: 'white',
+        border: '0',
+        display: 'block',
+        fontWeight: '600',
+        fontSize: '0.875rem'
+      }
+    };
+  };
+
+  // Manejar clic en evento del calendario
+  const handleSelectEvent = (event) => {
+    const task = event.resource;
+    if (isJefa() && task.status === 'pendiente') {
+      openEditModal(task);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -195,7 +281,7 @@ const Tasks = () => {
     <Layout>
       <div className="px-4 sm:px-0">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h2 className="text-3xl font-bold text-gray-900">Gestión de Tareas</h2>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Tareas</h2>
           
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             {/* Barra de búsqueda */}
@@ -206,7 +292,7 @@ const Tasks = () => {
                 placeholder="Buscar tareas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:border-purple-500 transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
               {searchTerm && (
                 <button
@@ -220,7 +306,7 @@ const Tasks = () => {
             
             <button
               onClick={() => {
-                setFormData({ title: '', description: '', priority: 'normal' });
+                setFormData({ title: '', description: '', priority: 'normal', dueDate: '' });
                 setFormErrors({});
                 setShowModal(true);
               }}
@@ -232,14 +318,42 @@ const Tasks = () => {
           </div>
         </div>
 
-        {/* Filtros simplificados y grandes */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Pestañas de vista */}
+        <div className="mb-6 flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-md font-semibold transition-all ${
+              viewMode === 'list'
+                ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+            }`}
+          >
+            <List className="w-5 h-5" />
+            Lista
+          </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-md font-semibold transition-all ${
+              viewMode === 'calendar'
+                ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+            }`}
+          >
+            <CalendarIcon className="w-5 h-5" />
+            Calendario
+          </button>
+        </div>
+
+        {viewMode === 'list' ? (
+          <>
+            {/* Filtros simplificados y grandes */}
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => setFilter('all')}
             className={`p-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
               filter === 'all'
                 ? 'text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-600'
             }`}
             style={filter === 'all' ? {backgroundColor: '#663399'} : {}}
           >
@@ -252,7 +366,7 @@ const Tasks = () => {
             className={`p-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
               filter === 'pendiente'
                 ? 'text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-600'
             }`}
             style={filter === 'pendiente' ? {backgroundColor: '#8844aa'} : {}}
           >
@@ -265,7 +379,7 @@ const Tasks = () => {
             className={`p-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
               filter === 'completada'
                 ? 'text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-2 border-gray-200 dark:border-gray-600'
             }`}
             style={filter === 'completada' ? {backgroundColor: '#a055cc'} : {}}
           >
@@ -275,54 +389,78 @@ const Tasks = () => {
           </button>
         </div>
 
-        {/* Lista de tareas */}
-        <div className="space-y-4">
-          {filteredTasks.length === 0 ? (
-            <div className="card text-center py-16">
-              <div className="text-6xl mb-4">📝</div>
-              <p className="text-2xl font-semibold text-gray-700 mb-2">No hay tareas aquí</p>
-              <p className="text-gray-500">
-                {filter === 'pendiente' ? '¡Perfecto! No tienes tareas pendientes' : 
-                 filter === 'completada' ? 'Aún no has completado ninguna tarea' :
-                 'Comienza creando tu primera tarea'}
-              </p>
-            </div>
-          ) : (
-            filteredTasks.map((task) => (
-              <div key={task._id} className={`card hover:shadow-xl transition-all duration-200 ${
-                task.status === 'completada' ? 'bg-green-50 border-2 border-green-200' : 
-                task.priority === 'alta' ? 'bg-red-50 border-2 border-red-200' : 
-                'bg-white border-2 border-gray-200'
+            {/* Lista de tareas */}
+            <div className="space-y-4">
+              {filteredTasks.length === 0 ? (
+                <div className="card text-center py-16">
+                  <div className="text-6xl mb-4">📝</div>
+                  <p className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No hay tareas aquí</p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {filter === 'pendiente' ? '¡Perfecto! No tienes tareas pendientes' : 
+                     filter === 'completada' ? 'Aún no has completado ninguna tarea' :
+                     'Comienza creando tu primera tarea'}
+                  </p>
+                </div>
+              ) : (
+                filteredTasks.map((task) => (
+                  <div key={task._id} className={`card hover:shadow-xl transition-all duration-200 ${
+                task.status === 'completada' ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' : 
+                isOverdue(task) ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-800' :
+                task.priority === 'alta' ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800' : 
+                isDueSoon(task) ? 'bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-800' :
+                'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600'
               }`}>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div className="flex-1 mb-4 md:mb-0">
                     <div className="flex items-center space-x-3 mb-3">
                       {task.status === 'completada' ? (
                         <span className="text-3xl">✅</span>
+                      ) : isOverdue(task) ? (
+                        <span className="text-3xl">⚠️</span>
                       ) : task.priority === 'alta' ? (
                         <span className="text-3xl">🔴</span>
+                      ) : isDueSoon(task) ? (
+                        <span className="text-3xl">⏰</span>
                       ) : (
                         <span className="text-3xl">📌</span>
                       )}
-                      <h3 className="text-2xl font-bold text-gray-900">{task.title}</h3>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{task.title}</h3>
+                      {isOverdue(task) && (
+                        <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold rounded-full">
+                          VENCIDA
+                        </span>
+                      )}
                     </div>
                     {task.description && (
-                      <p className="text-gray-700 text-lg mb-3 ml-12">{task.description}</p>
+                      <p className="text-gray-700 dark:text-gray-300 text-lg mb-3 ml-12">{task.description}</p>
                     )}
                     <div className="ml-12 space-y-1">
-                      <div className="flex items-center text-sm text-gray-600">
+                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                         <span className="font-semibold mr-2">Prioridad:</span>
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          task.priority === 'alta' ? 'bg-pink-100 text-pink-800' : 'bg-purple-100 text-purple-800'
+                          task.priority === 'alta' ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400'
                         }`}>
                           {task.priority === 'alta' ? '🔴 Urgente' : '🟣 Normal'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">
+                      {task.dueDate && (
+                        <div className="flex items-center text-sm">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span className="font-semibold mr-2">Fecha límite:</span>
+                          <span className={`px-2 py-1 rounded-md font-semibold ${
+                            isOverdue(task) ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
+                            isDueSoon(task) ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
+                            'text-gray-600 dark:text-gray-400'
+                          }`}>
+                            {formatDateOnly(task.dueDate)}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Creada por: {task.createdBy?.fullName} - {formatDate(task.createdAt)}
                       </p>
                       {task.completedAt && (
-                        <p className="text-sm text-green-700 font-semibold">
+                        <p className="text-sm text-green-700 dark:text-green-400 font-semibold">
                           ✅ Completada: {formatDate(task.completedAt)} por {task.completedBy?.fullName}
                         </p>
                       )}
@@ -382,14 +520,45 @@ const Tasks = () => {
               </div>
             ))
           )}
-        </div>
+            </div>
+          </>
+        ) : (
+          /* Vista de Calendario */
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6" style={{ height: '700px' }}>
+            <Calendar
+              localizer={localizer}
+              events={calendarEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '100%' }}
+              eventPropGetter={eventStyleGetter}
+              onSelectEvent={handleSelectEvent}
+              messages={{
+                next: 'Siguiente',
+                previous: 'Anterior',
+                today: 'Hoy',
+                month: 'Mes',
+                week: 'Semana',
+                day: 'Día',
+                agenda: 'Agenda',
+                date: 'Fecha',
+                time: 'Hora',
+                event: 'Tarea',
+                noEventsInRange: 'No hay tareas en este rango',
+                showMore: (total) => `+ Ver más (${total})`
+              }}
+              views={['month', 'week', 'day', 'agenda']}
+              defaultView="month"
+            />
+          </div>
+        )}
 
         {/* Modal para crear tarea */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
                 </h3>
                 <button
@@ -397,7 +566,7 @@ const Tasks = () => {
                     setShowModal(false);
                     setFormErrors({});
                   }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -405,7 +574,7 @@ const Tasks = () => {
               
               <form onSubmit={handleCreateTask} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Título *
                   </label>
                   <input
@@ -460,6 +629,22 @@ const Tasks = () => {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha límite (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="input-field"
+                  />
+                  <p className="text-gray-500 text-xs mt-1">
+                    {formData.dueDate ? `📅 ${formatDateOnly(formData.dueDate)}` : 'Sin fecha límite'}
+                  </p>
+                </div>
+
                 <div className="flex space-x-3 pt-4">
                   <button type="submit" className="btn-primary flex-1">
                     {isJefa() ? 'Crear Tarea' : 'Registrar Tarea'}
@@ -483,9 +668,9 @@ const Tasks = () => {
         {/* Modal para editar tarea */}
         {showEditModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   Editar Tarea
                 </h3>
                 <button
@@ -494,7 +679,7 @@ const Tasks = () => {
                     setEditingTask(null);
                     setFormErrors({});
                   }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -557,6 +742,22 @@ const Tasks = () => {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha límite (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="input-field"
+                  />
+                  <p className="text-gray-500 text-xs mt-1">
+                    {formData.dueDate ? `📅 ${formatDateOnly(formData.dueDate)}` : 'Sin fecha límite'}
+                  </p>
+                </div>
+
                 <div className="flex space-x-3 pt-4">
                   <button type="submit" className="btn-primary flex-1">
                     Actualizar Tarea
@@ -581,25 +782,25 @@ const Tasks = () => {
         {/* Modal de confirmación para eliminar */}
         {showDeleteModal && taskToDelete && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
               <div className="flex items-center mb-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertCircle className="w-6 h-6 text-red-600" />
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
-                  <p className="text-sm text-gray-500">Esta acción no se puede deshacer</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Confirmar Eliminación</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Esta acción no se puede deshacer</p>
                 </div>
               </div>
               
-              <p className="text-gray-700 mb-6">
+              <p className="text-gray-700 dark:text-gray-300 mb-6">
                 ¿Estás seguro de que deseas eliminar la tarea <span className="font-bold">"{taskToDelete.title}"</span>?
               </p>
 
               <div className="flex space-x-3">
                 <button
                   onClick={handleDeleteTask}
-                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold"
+                  className="flex-1 px-4 py-2 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition-colors font-semibold"
                 >
                   Sí, Eliminar
                 </button>
@@ -608,7 +809,7 @@ const Tasks = () => {
                     setShowDeleteModal(false);
                     setTaskToDelete(null);
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-semibold"
                 >
                   Cancelar
                 </button>
