@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, ListChecks, FileText, LogOut } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { LayoutDashboard, ListChecks, FileText, LogOut, Moon, Sun } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
   const navigation = [
@@ -15,9 +17,9 @@ const Layout = ({ children }) => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Navbar */}
-      <nav className="shadow-sm border-b" style={{background: 'linear-gradient(to right, #663399, #7d3eb8)', borderBottomColor: '#552288'}}>
+      <nav className="shadow-sm border-b dark:border-gray-700" style={{background: 'linear-gradient(to right, #663399, #7d3eb8)', borderBottomColor: '#552288'}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
@@ -51,6 +53,20 @@ const Layout = ({ children }) => {
                   ({user?.role === 'jefa' ? 'Jefa' : 'Asistente'})
                 </span>
               </div>
+              
+              {/* Toggle Dark Mode */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors"
+                title={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+              >
+                {theme === 'light' ? (
+                  <Moon className="w-5 h-5" />
+                ) : (
+                  <Sun className="w-5 h-5" />
+                )}
+              </button>
+              
               <button
                 onClick={logout}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors"

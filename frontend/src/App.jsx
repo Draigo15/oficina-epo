@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -11,9 +12,10 @@ import Profile from './pages/Profile';
 function App() {
   return (
     <Router>
-      <ToastProvider>
-        <AuthProvider>
-          <Routes>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <Routes>
             <Route path="/login" element={<Login />} />
             <Route
               path="/dashboard"
@@ -51,7 +53,8 @@ function App() {
           </Routes>
         </AuthProvider>
       </ToastProvider>
-    </Router>
+    </ThemeProvider>
+  </Router>
   );
 }
 
