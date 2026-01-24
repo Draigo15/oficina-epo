@@ -1,20 +1,28 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Check, X, AlertCircle, Clock, Trash2, RotateCcw, Search, Edit2 } from 'lucide-react';
 
 const Tasks = () => {
   const { isJefa } = useAuth();
+  const { success, error } = useToast();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState('all'); // all, pendiente, completada
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'normal'
   });
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
     fetchTasks();
@@ -24,33 +32,96 @@ const Tasks = () => {
     try {
       const response = await api.get('/tasks');
       setTasks(response.data);
-    } catch (error) {
-      console.error('Error al cargar tareas:', error);
+    } catch (err) {
+      console.error('Error al cargar tareas:', err);
+      error('Error al cargar las tareas');
     } finally {
       setLoading(false);
     }
   };
 
+  // Validar formulario
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.title.trim()) {
+      errors.title = 'El título es obligatorio';
+    } else if (formData.title.trim().length < 3) {
+      errors.title = 'El título debe tener al menos 3 caracteres';
+    } else if (formData.title.trim().length > 200) {
+      errors.title = 'El título no puede tener más de 200 caracteres';
+    }
+    
+    if (formData.description && formData.description.length > 1000) {
+      errors.description = 'La descripción no puede tener más de 1000 caracteres';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCreateTask = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      error('Por favor corrige los errores en el formulario');
+      return;
+    }
+    
     try {
       await api.post('/tasks', formData);
       setFormData({ title: '', description: '', priority: 'normal' });
+      setFormErrors({});
       setShowModal(false);
       fetchTasks();
-    } catch (error) {
-      console.error('Error al crear tarea:', error);
-      alert('Error al crear la tarea');
+      success('Tarea creada exitosamente');
+    } catch (err) {
+      console.error('Error al crear tarea:', err);
+      error('Error al crear la tarea');
     }
+  };
+
+  const handleEditTask = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      error('Por favor corrige los errores en el formulario');
+      return;
+    }
+    
+    try {
+      await api.put(`/tasks/${editingTask._id}`, formData);
+      setFormData({ title: '', description: '', priority: 'normal' });
+      setFormErrors({});
+      setShowEditModal(false);
+      setEditingTask(null);
+      fetchTasks();
+      success('Tarea actualizada exitosamente');
+    } catch (err) {
+      console.error('Error al actualizar tarea:', err);
+      error('Error al actualizar la tarea');
+    }
+  };
+
+  const openEditModal = (task) => {
+    setEditingTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority
+    });
+    setFormErrors({});
+    setShowEditModal(true);
   };
 
   const handleCompleteTask = async (taskId) => {
     try {
       await api.patch(`/tasks/${taskId}/complete`);
       fetchTasks();
-    } catch (error) {
-      console.error('Error al completar tarea:', error);
-      alert('Error al completar la tarea');
+      success('Tarea marcada como completada');
+    } catch (err) {
+      console.error('Error al completar tarea:', err);
+      error('Error al completar la tarea');
     }
   };
 
@@ -58,27 +129,46 @@ const Tasks = () => {
     try {
       await api.patch(`/tasks/${taskId}/reopen`);
       fetchTasks();
-    } catch (error) {
-      console.error('Error al reabrir tarea:', error);
-      alert('Error al reabrir la tarea');
+      success('Tarea reabierta correctamente');
+    } catch (err) {
+      console.error('Error al reabrir tarea:', err);
+      error('Error al reabrir la tarea');
     }
   };
 
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta tarea?')) return;
+  const confirmDeleteTask = (task) => {
+    setTaskToDelete(task);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
     
     try {
-      await api.delete(`/tasks/${taskId}`);
+      await api.delete(`/tasks/${taskToDelete._id}`);
+      setShowDeleteModal(false);
+      setTaskToDelete(null);
       fetchTasks();
-    } catch (error) {
-      console.error('Error al eliminar tarea:', error);
-      alert('Error al eliminar la tarea');
+      success('Tarea eliminada correctamente');
+    } catch (err) {
+      console.error('Error al eliminar tarea:', err);
+      error('Error al eliminar la tarea');
     }
   };
 
   const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true;
-    return task.status === filter;
+    // Filtrar por estado
+    if (filter !== 'all' && task.status !== filter) return false;
+    
+    // Filtrar por búsqueda
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const titleMatch = task.title.toLowerCase().includes(term);
+      const descMatch = task.description?.toLowerCase().includes(term);
+      return titleMatch || descMatch;
+    }
+    
+    return true;
   });
 
   const formatDate = (date) => {
@@ -104,15 +194,42 @@ const Tasks = () => {
   return (
     <Layout>
       <div className="px-4 sm:px-0">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <h2 className="text-3xl font-bold text-gray-900">Gestión de Tareas</h2>
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
-          </button>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            {/* Barra de búsqueda */}
+            <div className="relative flex-1 md:w-80">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar tareas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            
+            <button
+              onClick={() => {
+                setFormData({ title: '', description: '', priority: 'normal' });
+                setFormErrors({});
+                setShowModal(true);
+              }}
+              className="btn-primary flex items-center justify-center whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
+            </button>
+          </div>
         </div>
 
         {/* Filtros simplificados y grandes */}
@@ -214,17 +331,29 @@ const Tasks = () => {
                   
                   <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-2 md:space-y-0 md:space-x-3 ml-0 md:ml-6">
                     {task.status === 'pendiente' ? (
-                      <button
-                        onClick={() => handleCompleteTask(task._id)}
-                        className="px-6 py-3 text-white rounded-lg transition-colors font-semibold text-lg shadow-md flex items-center justify-center"
-                        style={{backgroundColor: '#8844aa'}}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#7733aa'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = '#8844aa'}
-                        title="Marcar como completada"
-                      >
-                        <Check className="w-6 h-6 mr-2" />
-                        Marcar como Hecha
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleCompleteTask(task._id)}
+                          className="px-6 py-3 text-white rounded-lg transition-colors font-semibold text-lg shadow-md flex items-center justify-center"
+                          style={{backgroundColor: '#8844aa'}}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#7733aa'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#8844aa'}
+                          title="Marcar como completada"
+                        >
+                          <Check className="w-6 h-6 mr-2" />
+                          Marcar como Hecha
+                        </button>
+                        {isJefa() && (
+                          <button
+                            onClick={() => openEditModal(task)}
+                            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold text-lg shadow-md flex items-center justify-center"
+                            title="Editar tarea"
+                          >
+                            <Edit2 className="w-6 h-6 mr-2" />
+                            Editar
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <button
                         onClick={() => handleReopenTask(task._id)}
@@ -240,7 +369,7 @@ const Tasks = () => {
                     )}
                     {isJefa() && (
                       <button
-                        onClick={() => handleDeleteTask(task._id)}
+                        onClick={() => confirmDeleteTask(task)}
                         className="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold text-lg shadow-md flex items-center justify-center"
                         title="Eliminar tarea"
                       >
@@ -257,14 +386,17 @@ const Tasks = () => {
 
         {/* Modal para crear tarea */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-gray-900">
                   {isJefa() ? 'Nueva Tarea' : 'Registrar Tarea'}
                 </h3>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setFormErrors({});
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-6 h-6" />
@@ -279,11 +411,18 @@ const Tasks = () => {
                   <input
                     type="text"
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="input-field"
-                    placeholder="Título de la tarea"
-                    required
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value });
+                      if (formErrors.title) setFormErrors({ ...formErrors, title: null });
+                    }}
+                    className={`input-field ${formErrors.title ? 'border-red-500 focus:border-red-500' : ''}`}
+                    placeholder="Título de la tarea (mín. 3 caracteres)"
+                    maxLength="200"
                   />
+                  {formErrors.title && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">{formData.title.length}/200 caracteres</p>
                 </div>
 
                 <div>
@@ -292,11 +431,19 @@ const Tasks = () => {
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="input-field"
+                    onChange={(e) => {
+                      setFormData({ ...formData, description: e.target.value });
+                      if (formErrors.description) setFormErrors({ ...formErrors, description: null });
+                    }}
+                    className={`input-field ${formErrors.description ? 'border-red-500 focus:border-red-500' : ''}`}
                     placeholder="Detalles de la tarea (opcional)"
                     rows="3"
+                    maxLength="1000"
                   />
+                  {formErrors.description && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.description}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">{formData.description.length}/1000 caracteres</p>
                 </div>
 
                 <div>
@@ -308,8 +455,8 @@ const Tasks = () => {
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                     className="input-field"
                   >
-                    <option value="normal">Normal</option>
-                    <option value="alta">Alta</option>
+                    <option value="normal">🟣 Normal</option>
+                    <option value="alta">🔴 Alta - Urgente</option>
                   </select>
                 </div>
 
@@ -319,13 +466,153 @@ const Tasks = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      setShowModal(false);
+                      setFormErrors({});
+                    }}
                     className="btn-secondary flex-1"
                   >
                     Cancelar
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para editar tarea */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Editar Tarea
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingTask(null);
+                    setFormErrors({});
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleEditTask} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Título *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => {
+                      setFormData({ ...formData, title: e.target.value });
+                      if (formErrors.title) setFormErrors({ ...formErrors, title: null });
+                    }}
+                    className={`input-field ${formErrors.title ? 'border-red-500 focus:border-red-500' : ''}`}
+                    placeholder="Título de la tarea (mín. 3 caracteres)"
+                    maxLength="200"
+                  />
+                  {formErrors.title && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">{formData.title.length}/200 caracteres</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => {
+                      setFormData({ ...formData, description: e.target.value });
+                      if (formErrors.description) setFormErrors({ ...formErrors, description: null });
+                    }}
+                    className={`input-field ${formErrors.description ? 'border-red-500 focus:border-red-500' : ''}`}
+                    placeholder="Detalles de la tarea (opcional)"
+                    rows="3"
+                    maxLength="1000"
+                  />
+                  {formErrors.description && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.description}</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">{formData.description.length}/1000 caracteres</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Prioridad
+                  </label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="normal">🟣 Normal</option>
+                    <option value="alta">🔴 Alta - Urgente</option>
+                  </select>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button type="submit" className="btn-primary flex-1">
+                    Actualizar Tarea
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingTask(null);
+                      setFormErrors({});
+                    }}
+                    className="btn-secondary flex-1"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación para eliminar */}
+        {showDeleteModal && taskToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-bold text-gray-900">Confirmar Eliminación</h3>
+                  <p className="text-sm text-gray-500">Esta acción no se puede deshacer</p>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 mb-6">
+                ¿Estás seguro de que deseas eliminar la tarea <span className="font-bold">"{taskToDelete.title}"</span>?
+              </p>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleDeleteTask}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold"
+                >
+                  Sí, Eliminar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setTaskToDelete(null);
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         )}
