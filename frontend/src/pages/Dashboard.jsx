@@ -2,27 +2,31 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, TrendingUp, AlertTriangle, CalendarClock, CalendarCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Dashboard = () => {
   const { user, isJefa } = useAuth();
+  const { success, error } = useToast();
   const [stats, setStats] = useState(null);
   const [productivityData, setProductivityData] = useState([]);
+  const [urgentTasks, setUrgentTasks] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchProductivityData();
+    fetchUrgentTasks();
   }, []);
 
   const fetchStats = async () => {
     try {
       const response = await api.get('/reports/stats');
       setStats(response.data);
-    } catch (error) {
-      console.error('Error al cargar estadísticas:', error);
+    } catch (err) {
+      console.error('Error al cargar estadísticas:', err);
     } finally {
       setLoading(false);
     }
@@ -32,9 +36,37 @@ const Dashboard = () => {
     try {
       const response = await api.get('/reports/productivity');
       setProductivityData(response.data);
-    } catch (error) {
-      console.error('Error al cargar datos de productividad:', error);
+    } catch (err) {
+      console.error('Error al cargar datos de productividad:', err);
     }
+  };
+
+  const fetchUrgentTasks = async () => {
+    try {
+      const response = await api.get('/reports/urgent-tasks');
+      setUrgentTasks(response.data);
+    } catch (err) {
+      console.error('Error al cargar tareas urgentes:', err);
+    }
+  };
+
+  const handleCompleteTask = async (taskId) => {
+    try {
+      await api.patch(`/tasks/${taskId}/complete`);
+      success('Tarea marcada como completada');
+      fetchStats();
+      fetchUrgentTasks();
+    } catch (err) {
+      console.error('Error al completar tarea:', err);
+      error('Error al completar la tarea');
+    }
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('es-MX', {
+      day: 'numeric',
+      month: 'short'
+    });
   };
 
   if (loading) {
@@ -60,6 +92,112 @@ const Dashboard = () => {
             {isJefa() ? 'Aquí está el resumen de todas las tareas' : 'Aquí está el resumen de tu trabajo'}
           </p>
         </div>
+
+        {/* Sección de Tareas Urgentes */}
+        {urgentTasks && urgentTasks.totalUrgent > 0 && (
+          <div className="rounded-2xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-6 shadow-lg border-2 border-red-200 dark:border-red-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-500 dark:bg-red-600 p-3 rounded-full animate-pulse">
+                  <AlertTriangle className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-red-800 dark:text-red-400">
+                    ⚠️ Tareas que Requieren Atención
+                  </h3>
+                  <p className="text-red-600 dark:text-red-300">
+                    {urgentTasks.totalUrgent} {urgentTasks.totalUrgent === 1 ? 'tarea necesita' : 'tareas necesitan'} tu atención inmediata
+                  </p>
+                </div>
+              </div>
+              <Link to="/tasks">
+                <button className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition-all hover:scale-105">
+                  Ver Todas
+                </button>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Tareas Vencidas */}
+              {urgentTasks.overdue.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border-2 border-red-300 dark:border-red-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    <h4 className="font-bold text-red-800 dark:text-red-400">VENCIDAS ({urgentTasks.overdue.length})</h4>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {urgentTasks.overdue.map((task) => (
+                      <div key={task._id} className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{task.title}</p>
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          📅 Venció: {formatDate(task.dueDate)}
+                        </p>
+                        <button
+                          onClick={() => handleCompleteTask(task._id)}
+                          className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-xs py-1.5 rounded-md transition-colors"
+                        >
+                          ✓ Completar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tareas de Hoy */}
+              {urgentTasks.today.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border-2 border-orange-300 dark:border-orange-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarClock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    <h4 className="font-bold text-orange-800 dark:text-orange-400">HOY ({urgentTasks.today.length})</h4>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {urgentTasks.today.map((task) => (
+                      <div key={task._id} className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{task.title}</p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400">
+                          🔴 {task.priority === 'alta' ? 'Urgente' : 'Normal'}
+                        </p>
+                        <button
+                          onClick={() => handleCompleteTask(task._id)}
+                          className="mt-2 w-full bg-orange-600 hover:bg-orange-700 text-white text-xs py-1.5 rounded-md transition-colors"
+                        >
+                          ✓ Completar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tareas de Mañana */}
+              {urgentTasks.tomorrow.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border-2 border-yellow-300 dark:border-yellow-700">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarCheck className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                    <h4 className="font-bold text-yellow-800 dark:text-yellow-400">MAÑANA ({urgentTasks.tomorrow.length})</h4>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {urgentTasks.tomorrow.map((task) => (
+                      <div key={task._id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{task.title}</p>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                          🔴 {task.priority === 'alta' ? 'Urgente' : 'Normal'}
+                        </p>
+                        <button
+                          onClick={() => handleCompleteTask(task._id)}
+                          className="mt-2 w-full bg-yellow-600 hover:bg-yellow-700 text-white text-xs py-1.5 rounded-md transition-colors"
+                        >
+                          ✓ Completar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
