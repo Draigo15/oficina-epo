@@ -89,7 +89,7 @@ const Stats = () => {
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Productividad (últimos 6 meses)</h3>
               </div>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%" minHeight={256} minWidth={0}>
+                <ResponsiveContainer width="100%" height="100%" minHeight={256} minWidth={256}>
                   <BarChart data={productivity} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <XAxis dataKey="month" tick={{ fill: '#9ca3af' }} />
                     <YAxis tick={{ fill: '#9ca3af' }} />
@@ -107,7 +107,7 @@ const Stats = () => {
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Distribución por estado</h3>
               </div>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minHeight={256} minWidth={256}>
                   <PieChart>
                     <Pie data={pieData} dataKey="value" nameKey="name" label outerRadius={90}>
                       {pieData.map((entry, index) => (
