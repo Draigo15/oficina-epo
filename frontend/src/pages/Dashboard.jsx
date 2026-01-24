@@ -3,15 +3,18 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Dashboard = () => {
   const { user, isJefa } = useAuth();
   const [stats, setStats] = useState(null);
+  const [productivityData, setProductivityData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
+    fetchProductivityData();
   }, []);
 
   const fetchStats = async () => {
@@ -22,6 +25,15 @@ const Dashboard = () => {
       console.error('Error al cargar estadísticas:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProductivityData = async () => {
+    try {
+      const response = await api.get('/reports/productivity');
+      setProductivityData(response.data);
+    } catch (error) {
+      console.error('Error al cargar datos de productividad:', error);
     }
   };
 
@@ -137,6 +149,86 @@ const Dashboard = () => {
             </div>
           </Link>
         </div>
+
+        {/* Gráfica de Productividad */}
+        {productivityData.length > 0 && (
+          <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-md border-2 border-gray-200 dark:border-gray-700">
+            <div className="flex items-center mb-6">
+              <TrendingUp className="w-8 h-8 text-purple-600 dark:text-purple-400 mr-3" />
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Tu Productividad</h3>
+                <p className="text-gray-600 dark:text-gray-400">Tareas completadas en los últimos 6 meses</p>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={productivityData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#9ca3af" 
+                  style={{ fontSize: '14px', fontWeight: '500' }}
+                />
+                <YAxis 
+                  stroke="#9ca3af" 
+                  style={{ fontSize: '14px', fontWeight: '500' }}
+                  allowDecimals={false}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1f2937', 
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#f3f4f6'
+                  }}
+                  labelStyle={{ color: '#f3f4f6', fontWeight: 'bold' }}
+                  cursor={{ fill: 'rgba(139, 92, 246, 0.1)' }}
+                />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px' }}
+                  iconType="circle"
+                />
+                <Bar 
+                  dataKey="completadas" 
+                  fill="url(#colorGradient)" 
+                  radius={[8, 8, 0, 0]}
+                  name="Tareas Completadas"
+                />
+                <defs>
+                  <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1}/>
+                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8}/>
+                  </linearGradient>
+                </defs>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  {productivityData.reduce((sum, month) => sum + month.completadas, 0)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Total últimos 6 meses</p>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {Math.round(productivityData.reduce((sum, month) => sum + month.completadas, 0) / 6)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Promedio mensual</p>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {Math.max(...productivityData.map(m => m.completadas))}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Mejor mes</p>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  {productivityData[productivityData.length - 1]?.completadas || 0}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Este mes</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Guía rápida */}
         <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-md border-2 border-gray-200 dark:border-gray-700">
