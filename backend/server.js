@@ -5,7 +5,6 @@ import connectDB from './config/db.js';
 import authRoutes from './routes/auth.js';
 import taskRoutes from './routes/tasks.js';
 import reportRoutes from './routes/reports.js';
-import notificationRoutes from './routes/notifications.js';
 
 dotenv.config();
 
@@ -35,7 +34,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/notifications', notificationRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {

@@ -60,17 +60,11 @@ router.get('/stats', protect, async (req, res) => {
       priority: 'alta' 
     });
 
-    const upcomingTasks = await Task.find({ status: 'pendiente' })
-      .sort({ scheduledDate: 1, createdAt: 1 })
-      .limit(5)
-      .populate('createdBy', 'fullName');
-
     res.json({
       totalTasks,
       pendingTasks,
       completedTasks,
-      highPriorityTasks,
-      upcomingTasks
+      highPriorityTasks
     });
   } catch (error) {
     res.status(500).json({ 

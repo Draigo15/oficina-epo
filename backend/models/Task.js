@@ -17,11 +17,6 @@ const taskSchema = new mongoose.Schema({
     enum: ['normal', 'alta'],
     default: 'normal'
   },
-  category: {
-    type: String,
-    enum: ['administrativo', 'soporte', 'documentacion', 'otros'],
-    default: 'otros'
-  },
   status: {
     type: String,
     enum: ['pendiente', 'completada'],
@@ -38,10 +33,6 @@ const taskSchema = new mongoose.Schema({
   },
   completedAt: {
     type: Date
-  },
-  scheduledDate: {
-    type: Date,
-    default: Date.now
   }
 }, {
   timestamps: true

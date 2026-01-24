@@ -1,7 +1,5 @@
 import express from 'express';
 import Task from '../models/Task.js';
-import User from '../models/User.js';
-import Notification from '../models/Notification.js';
 import { protect, isJefa } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -60,23 +58,6 @@ router.post('/', protect, async (req, res) => {
 
     const populatedTask = await Task.findById(task._id)
       .populate('createdBy', 'fullName');
-
-    // Notificar a los asistentes si la tarea fue creada por una Jefa
-    if (req.user.role === 'jefa') {
-      const asistentes = await User.find({ role: 'asistente' });
-      
-      const notifications = asistentes.map(asistente => ({
-        recipient: asistente._id,
-        sender: req.user._id,
-        type: 'new_task',
-        message: `Nueva tarea asignada: ${title}`,
-        task: task._id
-      }));
-      
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-      }
-    }
 
     res.status(201).json(populatedTask);
   } catch (error) {
@@ -178,32 +159,6 @@ router.delete('/:id', protect, isJefa, async (req, res) => {
     res.json({ message: 'Tarea eliminada correctamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error al eliminar tarea', error: error.message });
-  }
-});
-
-// @route   PATCH /api/tasks/:id/reschedule
-// @desc    Reprogramar fecha de tarea
-// @access  Private
-router.patch('/:id/reschedule', protect, async (req, res) => {
-  try {
-    const { scheduledDate } = req.body;
-    
-    if (!scheduledDate) {
-      return res.status(400).json({ message: 'Se requiere una fecha' });
-    }
-
-    const task = await Task.findById(req.params.id);
-
-    if (!task) {
-      return res.status(404).json({ message: 'Tarea no encontrada' });
-    }
-
-    task.scheduledDate = scheduledDate;
-    await task.save();
-
-    res.json(task);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al reprogramar tarea', error: error.message });
   }
 });
 

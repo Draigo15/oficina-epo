@@ -50,26 +50,6 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const updateProfile = async (data) => {
-    try {
-      const response = await api.patch('/auth/profile', data);
-      const { token, ...userData } = response.data;
-      
-      if (token) {
-        localStorage.setItem('token', token);
-      }
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Error al actualizar perfil' 
-      };
-    }
-  };
-
   const isJefa = () => {
     return user?.role === 'jefa';
   };
@@ -82,7 +62,6 @@ export const AuthProvider = ({ children }) => {
     user,
     login,
     logout,
-    updateProfile,
     isJefa,
     isAsistente,
     loading
