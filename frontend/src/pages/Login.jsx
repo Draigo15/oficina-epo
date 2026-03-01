@@ -39,45 +39,50 @@ const Login = () => {
       <div className="absolute -bottom-32 left-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
 
       {/* ── Columna izquierda: Branding ── */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-14 relative z-10">
-        {/* Logo + nombre */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center p-14 relative z-10">
         <div className="animate-fade-in-down">
+          {/* Logo */}
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl mb-8 border border-white/20">
             <BookOpen className="w-10 h-10 text-white" />
           </div>
+
+          {/* Título */}
           <h1 className="text-5xl font-extrabold text-white leading-tight mb-3">
             Sistema de<br />Gestión de<br />Tareas
           </h1>
           <p className="text-purple-200 text-lg font-medium mb-1">Comité de Mejora Continua</p>
-          <p className="text-purple-300/70 text-sm">Escuela Profesional de Odontología · EPO</p>
-        </div>
+          <p className="text-purple-300/70 text-sm mb-12">Escuela Profesional de Odontología · EPO</p>
 
-        {/* Bullets de funcionalidades */}
-        <div className="space-y-5 animate-fade-in-up">
-          <p className="text-purple-200/80 text-sm uppercase tracking-widest font-semibold mb-6">
+          {/* Divisor */}
+          <div className="w-16 h-0.5 bg-white/20 rounded-full mb-8"></div>
+
+          {/* Bullets */}
+          <p className="text-purple-200/80 text-xs uppercase tracking-widest font-semibold mb-6">
             ¿Qué puedes hacer aquí?
           </p>
-          {[
-            { icon: CheckCircle2, label: 'Gestión de tareas', desc: 'Crea, asigna y completa tareas del comité' },
-            { icon: BarChart2,    label: 'Estadísticas',      desc: 'Visualiza el avance y productividad mensual' },
-            { icon: FileText,     label: 'Reportes PDF',      desc: 'Descarga informes mensuales con un clic' },
-          ].map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
-                <Icon className="w-5 h-5 text-purple-200" />
+          <div className="space-y-5">
+            {[
+              { icon: CheckCircle2, label: 'Gestión de tareas', desc: 'Crea, asigna y completa tareas del comité' },
+              { icon: BarChart2,    label: 'Estadísticas',      desc: 'Visualiza el avance y productividad mensual' },
+              { icon: FileText,     label: 'Reportes PDF',      desc: 'Descarga informes mensuales con un clic' },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-purple-200" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm">{label}</p>
+                  <p className="text-purple-300/70 text-xs mt-0.5">{desc}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-white font-semibold text-sm">{label}</p>
-                <p className="text-purple-300/70 text-xs mt-0.5">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Footer columna izquierda */}
-        <p className="text-purple-300/40 text-xs">
-          © 2026 Escuela Profesional de Odontología
-        </p>
+          {/* Footer */}
+          <p className="text-purple-300/30 text-xs mt-16">
+            © 2026 Escuela Profesional de Odontología
+          </p>
+        </div>
       </div>
 
       {/* ── Columna derecha: Formulario ── */}
