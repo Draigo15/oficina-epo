@@ -4,18 +4,20 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, AlertTriangle, CalendarClock, CalendarCheck } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, AlertTriangle, CalendarClock, CalendarCheck, TrendingUp, Star } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, isJefa } = useAuth();
   const { success, error } = useToast();
   const [stats, setStats] = useState(null);
   const [urgentTasks, setUrgentTasks] = useState(null);
+  const [myStats, setMyStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchUrgentTasks();
+    if (!isJefa()) fetchMyStats();
   }, []);
 
   const fetchStats = async () => {
@@ -35,6 +37,15 @@ const Dashboard = () => {
       setUrgentTasks(response.data);
     } catch (err) {
       console.error('Error al cargar tareas urgentes:', err);
+    }
+  };
+
+  const fetchMyStats = async () => {
+    try {
+      const response = await api.get('/reports/my-stats');
+      setMyStats(response.data);
+    } catch (err) {
+      console.error('Error al cargar estadísticas personales:', err);
     }
   };
 
@@ -73,11 +84,14 @@ const Dashboard = () => {
       <div className="px-4 sm:px-0 space-y-8">
         {/* Saludo personalizado */}
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-8 shadow-md border border-purple-200 dark:border-purple-800">
+          <p className="text-sm font-medium text-purple-400 dark:text-purple-500 uppercase tracking-widest mb-1">
+            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, c => c.toUpperCase())}
+          </p>
           <h1 className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
             ¡Hola, {user?.fullName?.split(' ')[0]}! 👋
           </h1>
           <p className="text-xl text-gray-700 dark:text-gray-300">
-            {isJefa() ? 'Aquí está el resumen de todas las tareas' : 'Aquí está el resumen de tu trabajo'}
+            {isJefa() ? 'Aquí está el resumen de todas las tareas del sistema' : `Tu progreso personal de ${myStats?.monthName || 'este mes'}`}
           </p>
         </div>
 
@@ -117,8 +131,8 @@ const Dashboard = () => {
                     {urgentTasks.overdue.map((task) => (
                       <div key={task._id} className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3">
                         <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{task.title}</p>
-                        <p className="text-xs text-red-600 dark:text-red-400">
-                          📅 Venció: {formatDate(task.dueDate)}
+                        <p className="text-xs text-red-600 dark:text-red-400 font-semibold">
+                          🔴 Venció hace {Math.max(1, Math.round((new Date() - new Date(task.dueDate)) / (1000 * 60 * 60 * 24)))} {Math.max(1, Math.round((new Date() - new Date(task.dueDate)) / (1000 * 60 * 60 * 24))) === 1 ? 'día' : 'días'}
                         </p>
                         <button
                           onClick={() => handleCompleteTask(task._id)}
@@ -143,8 +157,8 @@ const Dashboard = () => {
                     {urgentTasks.today.map((task) => (
                       <div key={task._id} className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
                         <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{task.title}</p>
-                        <p className="text-xs text-orange-600 dark:text-orange-400">
-                          🔴 {task.priority === 'alta' ? 'Urgente' : 'Normal'}
+                        <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold">
+                          🚨 ¡Vence HOY! · {task.priority === 'alta' ? 'Urgente' : 'Normal'}
                         </p>
                         <button
                           onClick={() => handleCompleteTask(task._id)}
@@ -169,8 +183,8 @@ const Dashboard = () => {
                     {urgentTasks.tomorrow.map((task) => (
                       <div key={task._id} className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
                         <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{task.title}</p>
-                        <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                          🔴 {task.priority === 'alta' ? 'Urgente' : 'Normal'}
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold">
+                          ⏰ Vence mañana · {task.priority === 'alta' ? 'Urgente' : 'Normal'}
                         </p>
                         <button
                           onClick={() => handleCompleteTask(task._id)}
@@ -187,44 +201,126 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Barra de progreso personal - solo asistente */}
+        {!isJefa() && myStats && (
+          <div className="rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-md border-2 border-purple-100 dark:border-purple-900">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded-full">
+                <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex-grow">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Mi progreso de {myStats.monthName}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {myStats.myCompletedMonth} de {myStats.totalThisMonth} tareas completadas este mes
+                </p>
+              </div>
+              <span className={`text-3xl font-bold ${
+                myStats.progressPercent >= 70 ? 'text-green-600 dark:text-green-400'
+                : myStats.progressPercent >= 40 ? 'text-amber-600 dark:text-amber-400'
+                : 'text-red-500 dark:text-red-400'
+              }`}>
+                {myStats.progressPercent}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-5 overflow-hidden">
+              <div
+                className={`h-5 rounded-full transition-all duration-1000 ${
+                  myStats.progressPercent >= 70 ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                  : myStats.progressPercent >= 40 ? 'bg-gradient-to-r from-amber-400 to-yellow-500'
+                  : 'bg-gradient-to-r from-red-400 to-orange-500'
+                }`}
+                style={{ width: `${myStats.progressPercent}%` }}
+              ></div>
+            </div>
+            <p className={`mt-3 text-sm font-semibold ${
+              myStats.progressPercent >= 70 ? 'text-green-600 dark:text-green-400'
+              : myStats.progressPercent >= 40 ? 'text-amber-600 dark:text-amber-400'
+              : 'text-red-500 dark:text-red-400'
+            }`}>
+              {myStats.progressPercent >= 90 ? '🏆 ¡Increíble desempeño! Casi al 100% este mes'
+                : myStats.progressPercent >= 70 ? '⭐ ¡Excelente! Vas muy bien este mes'
+                : myStats.progressPercent >= 40 ? '💪 ¡Buen ritmo! Sigue adelante'
+                : myStats.totalThisMonth === 0 ? '📋 Aún no hay tareas registradas este mes'
+                : '🎯 Quedan tareas pendientes — ¡tú puedes completarlas!'}
+            </p>
+          </div>
+        )}
+
         {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link to="/tasks?filter=pendiente" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
-            <div className="relative z-10 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
-                <Clock className="w-8 h-8" />
-              </div>
-              <p className="text-5xl font-bold mb-2 text-white">{stats?.pendingTasks || 0}</p>
-              <p className="text-lg font-semibold text-purple-100">Tareas Pendientes</p>
-            </div>
-          </Link>
-
-          <Link to="/tasks?filter=completada" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
-            <div className="relative z-10 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <p className="text-5xl font-bold mb-2 text-white">{stats?.completedTasks || 0}</p>
-              <p className="text-lg font-semibold text-green-100">Tareas Completadas</p>
-            </div>
-          </Link>
-
-          <Link to="/tasks" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
-            <div className="relative z-10 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
-                <FileText className="w-8 h-8" />
-              </div>
-              <p className="text-5xl font-bold mb-2 text-white">{stats?.totalTasks || 0}</p>
-              <p className="text-lg font-semibold text-blue-100">Total de Tareas</p>
-            </div>
-          </Link>
+          {isJefa() ? (
+            <>
+              <Link to="/tasks?filter=pendiente" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
+                    <Clock className="w-8 h-8" />
+                  </div>
+                  <p className="text-5xl font-bold mb-2 text-white">{stats?.pendingTasks || 0}</p>
+                  <p className="text-lg font-semibold text-purple-100">Pendientes</p>
+                </div>
+              </Link>
+              <Link to="/tasks?filter=completada" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <p className="text-5xl font-bold mb-2 text-white">{stats?.completedTasks || 0}</p>
+                  <p className="text-lg font-semibold text-green-100">Completadas</p>
+                </div>
+              </Link>
+              <Link to="/tasks" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <p className="text-5xl font-bold mb-2 text-white">{stats?.overdueTasks || 0}</p>
+                  <p className="text-lg font-semibold text-red-100">Vencidas</p>
+                </div>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/tasks?filter=pendiente" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
+                    <Clock className="w-8 h-8" />
+                  </div>
+                  <p className="text-5xl font-bold mb-2 text-white">{myStats?.myPending || 0}</p>
+                  <p className="text-lg font-semibold text-purple-100">Mis Pendientes</p>
+                </div>
+              </Link>
+              <Link to="/tasks?filter=completada" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <p className="text-5xl font-bold mb-2 text-white">{myStats?.myCompletedTotal || 0}</p>
+                  <p className="text-lg font-semibold text-green-100">Completadas por Mí</p>
+                </div>
+              </Link>
+              <Link to="/tasks" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white rounded-full opacity-20 blur-xl group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 bg-white/20 text-white group-hover:scale-110 transition-transform duration-300">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <p className="text-5xl font-bold mb-2 text-white">{myStats?.myOverdue || 0}</p>
+                  <p className="text-lg font-semibold text-red-100">Mis Vencidas</p>
+                </div>
+              </Link>
+            </>
+          )}
         </div>
 
-        {/* Alerta de tareas urgentes */}
-        {stats?.highPriorityTasks > 0 && (
+        {/* Alerta alta prioridad - solo jefa */}
+        {isJefa() && stats?.highPriorityTasks > 0 && (
           <div className="rounded-2xl p-6 bg-gradient-to-r from-red-100 to-pink-100 border-2 border-red-300 shadow-lg">
             <div className="flex items-center flex-wrap gap-4">
               <div className="flex-shrink-0 bg-red-500 p-3 rounded-full">
@@ -232,13 +328,41 @@ const Dashboard = () => {
               </div>
               <div className="flex-grow">
                 <h3 className="text-xl font-bold text-red-800">
-                  ¡Atención! Tienes {stats.highPriorityTasks} {stats.highPriorityTasks === 1 ? 'tarea urgente' : 'tareas urgentes'}
+                  ¡Atención! Hay {stats.highPriorityTasks} {stats.highPriorityTasks === 1 ? 'tarea urgente' : 'tareas urgentes'} en el sistema
                 </h3>
                 <p className="mt-1 text-red-700">Es importante atenderlas pronto para mantener el flujo de trabajo.</p>
               </div>
               <Link to="/tasks?priority=high">
                 <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl transition-colors shadow-lg">
                   Ver Tareas Urgentes
+                </button>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Mensaje motivacional - solo asistente */}
+        {!isJefa() && myStats && (
+          <div className="rounded-2xl p-6 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-2 border-purple-200 dark:border-purple-800 shadow-lg">
+            <div className="flex items-center flex-wrap gap-4">
+              <div className="flex-shrink-0 bg-purple-500 dark:bg-purple-600 p-3 rounded-full">
+                <Star className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex-grow">
+                <h3 className="text-xl font-bold text-purple-800 dark:text-purple-300">
+                  {myStats.myCompletedTotal === 0
+                    ? '¡Bienvenida al sistema!'
+                    : `¡Llevas ${myStats.myCompletedTotal} ${myStats.myCompletedTotal === 1 ? 'tarea completada' : 'tareas completadas'} en total!`}
+                </h3>
+                <p className="mt-1 text-purple-700 dark:text-purple-400">
+                  {myStats.myCompletedMonth > 0
+                    ? `Este mes completaste ${myStats.myCompletedMonth} ${myStats.myCompletedMonth === 1 ? 'tarea' : 'tareas'}. ¡Sigue con ese ritmo!`
+                    : 'Completa tus primeras tareas de este mes para ver tu progreso aquí.'}
+                </p>
+              </div>
+              <Link to="/tasks">
+                <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-xl transition-colors shadow-lg">
+                  Ver Mis Tareas
                 </button>
               </Link>
             </div>

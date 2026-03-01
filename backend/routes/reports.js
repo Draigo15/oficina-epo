@@ -60,11 +60,19 @@ router.get('/stats', protect, async (req, res) => {
       priority: 'alta' 
     });
 
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const overdueTasks = await Task.countDocuments({
+      status: 'pendiente',
+      dueDate: { $lt: startOfToday }
+    });
+
     res.json({
       totalTasks,
       pendingTasks,
       completedTasks,
-      highPriorityTasks
+      highPriorityTasks,
+      overdueTasks
     });
   } catch (error) {
     res.status(500).json({ 
@@ -163,6 +171,53 @@ router.get('/urgent-tasks', protect, async (req, res) => {
       message: 'Error al obtener tareas urgentes', 
       error: error.message 
     });
+  }
+});
+
+// @route   GET /api/reports/my-stats
+// @desc    Estadísticas personales del usuario actual (asistente)
+// @access  Private
+router.get('/my-stats', protect, async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const myCompletedMonth = await Task.countDocuments({
+      completedBy: req.user._id,
+      completedAt: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+
+    const totalThisMonth = await Task.countDocuments({
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+
+    const myPending = await Task.countDocuments({ status: 'pendiente' });
+
+    const myOverdue = await Task.countDocuments({
+      status: 'pendiente',
+      dueDate: { $lt: startOfToday }
+    });
+
+    const myCompletedTotal = await Task.countDocuments({ completedBy: req.user._id });
+
+    const monthName = now.toLocaleDateString('es-MX', { month: 'long' });
+    const progressPercent = totalThisMonth > 0
+      ? Math.round((myCompletedMonth / totalThisMonth) * 100)
+      : 0;
+
+    res.json({
+      myCompletedMonth,
+      myCompletedTotal,
+      totalThisMonth,
+      myPending,
+      myOverdue,
+      progressPercent,
+      monthName
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener estadísticas personales', error: error.message });
   }
 });
 

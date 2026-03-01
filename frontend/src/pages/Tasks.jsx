@@ -27,6 +27,12 @@ const Tasks = () => {
   const [filter, setFilter] = useState('all'); // all, pendiente, completada
   const [timePeriod, setTimePeriod] = useState('month'); // 'all', 'week', 'month'
   const [searchTerm, setSearchTerm] = useState('');
+  // Reloj para re-renderizar el badge de vencimiento cada minuto
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'calendar', 'kanban'
   const [formData, setFormData] = useState({
     title: '',
@@ -235,6 +241,66 @@ const Tasks = () => {
     return dueDate >= today && dueDate <= threeDaysFromNow;
   };
 
+  // Retorna estado detallado de vencimiento para mostrar badge
+  const getDueStatus = (task) => {
+    if (!task.dueDate) return null;
+
+    const now = new Date();
+    const due = new Date(task.dueDate);
+    // Comparar solo fechas (sin hora) para diffDays
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueStart   = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const diffDays   = Math.round((dueStart - todayStart) / (1000 * 60 * 60 * 24));
+
+    if (task.status === 'completada') {
+      const completedAt = task.completedAt ? new Date(task.completedAt) : now;
+      const wasLate = due < completedAt;
+      return {
+        label: wasLate ? 'Completada fuera de plazo' : 'Completada a tiempo',
+        badge: wasLate ? '⚠️' : '✅',
+        color: wasLate ? 'gray' : 'green',
+        type: 'completed',
+      };
+    }
+
+    if (diffDays < 0) {
+      const daysLate = Math.abs(diffDays);
+      return {
+        label: daysLate === 1 ? 'Venció ayer' : `Vencida hace ${daysLate} días`,
+        badge: '🔴',
+        color: 'red',
+        type: 'overdue',
+      };
+    }
+    if (diffDays === 0) return { label: '¡Vence HOY!',     badge: '🚨', color: 'orange', type: 'today'    };
+    if (diffDays === 1) return { label: 'Vence mañana',    badge: '⏰', color: 'amber',  type: 'tomorrow' };
+    if (diffDays <= 3)  return { label: `Vence en ${diffDays} días`, badge: '⚡', color: 'yellow', type: 'soon' };
+    if (diffDays <= 7)  return { label: `Vence en ${diffDays} días`, badge: '📅', color: 'blue',   type: 'week' };
+    return               { label: `Vence en ${diffDays} días`,       badge: '📅', color: 'teal',   type: 'future' };
+  };
+
+  // Badge visual de vencimiento
+  const DueBadge = ({ task, size = 'sm' }) => {
+    const st = getDueStatus(task);
+    if (!st) return null;
+    const colorCls = {
+      red:    'bg-red-100    dark:bg-red-900/40    text-red-700    dark:text-red-400    border border-red-300    dark:border-red-700',
+      orange: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-700 animate-pulse',
+      amber:  'bg-amber-100  dark:bg-amber-900/40  text-amber-700  dark:text-amber-400  border border-amber-300  dark:border-amber-700',
+      yellow: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700',
+      blue:   'bg-blue-100   dark:bg-blue-900/40   text-blue-700   dark:text-blue-400   border border-blue-300   dark:border-blue-700',
+      teal:   'bg-teal-100   dark:bg-teal-900/40   text-teal-700   dark:text-teal-400   border border-teal-300   dark:border-teal-700',
+      green:  'bg-green-100  dark:bg-green-900/40  text-green-700  dark:text-green-400  border border-green-300  dark:border-green-700',
+      gray:   'bg-gray-100   dark:bg-gray-700/40   text-gray-600   dark:text-gray-400   border border-gray-300   dark:border-gray-600',
+    }[st.color] || '';
+    const sizeCls = { xs: 'text-xs px-1.5 py-0.5', sm: 'text-xs px-2.5 py-1', md: 'text-sm px-3 py-1.5' }[size];
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full font-bold whitespace-nowrap ${colorCls} ${sizeCls}`}>
+        {st.badge} {st.label}
+      </span>
+    );
+  };
+
   // Convertir tareas a eventos del calendario
   const calendarEvents = tasks.map(task => {
     // Usar dueDate si existe, sino createdAt
@@ -346,18 +412,14 @@ const Tasks = () => {
           {task.description && (
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
           )}
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
             <span className={`px-2 py-1 rounded-full ${
               task.priority === 'alta' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' 
               : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
             }`}>
               {task.priority === 'alta' ? '🔴 Urgente' : '🟣 Normal'}
             </span>
-            {task.dueDate && (
-              <span className={`${isOverdue(task) ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
-                📅 {formatDateOnly(task.dueDate)}
-              </span>
-            )}
+            {task.dueDate && <DueBadge task={task} size="xs" />}
           </div>
         </div>
       )}
@@ -598,11 +660,7 @@ const Tasks = () => {
                         <span className="text-3xl">📌</span>
                       )}
                       <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{task.title}</h3>
-                      {isOverdue(task) && (
-                        <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold rounded-full">
-                          VENCIDA
-                        </span>
-                      )}
+                      <DueBadge task={task} size="sm" />
                     </div>
                     {task.description && (
                       <p className="text-gray-700 dark:text-gray-300 text-lg mb-3 ml-12">{task.description}</p>
@@ -617,16 +675,10 @@ const Tasks = () => {
                         </span>
                       </div>
                       {task.dueDate && (
-                        <div className="flex items-center text-sm">
-                          <Clock className="w-4 h-4 mr-2" />
-                          <span className="font-semibold mr-2">Fecha límite:</span>
-                          <span className={`px-2 py-1 rounded-md font-semibold ${
-                            isOverdue(task) ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
-                            isDueSoon(task) ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' :
-                            'text-gray-600 dark:text-gray-400'
-                          }`}>
-                            {formatDateOnly(task.dueDate)}
-                          </span>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                          <span className="font-semibold text-gray-600 dark:text-gray-400">Fecha límite:</span>
+                          <span className="text-gray-700 dark:text-gray-300">{formatDateOnly(task.dueDate)}</span>
                         </div>
                       )}
                       <p className="text-sm text-gray-500 dark:text-gray-400">
