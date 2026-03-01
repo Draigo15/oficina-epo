@@ -63,6 +63,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         role: user.role,
         fullName: user.fullName,
+        createdAt: user.createdAt,
         token: generateToken(user._id)
       });
     } else {
@@ -81,8 +82,37 @@ router.get('/me', protect, async (req, res) => {
     _id: req.user._id,
     username: req.user.username,
     role: req.user.role,
-    fullName: req.user.fullName
+    fullName: req.user.fullName,
+    createdAt: req.user.createdAt
   });
+});
+
+// @route   PUT /api/auth/profile
+// @desc    Actualizar perfil del usuario
+// @access  Private
+router.put('/profile', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    if (req.body.fullName) user.fullName = req.body.fullName;
+    if (req.body.password) {
+      if (req.body.password.length < 6)
+        return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+      user.password = req.body.password;
+    }
+
+    const updated = await user.save();
+    res.json({
+      _id: updated._id,
+      username: updated.username,
+      role: updated.role,
+      fullName: updated.fullName,
+      createdAt: updated.createdAt
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar perfil', error: error.message });
+  }
 });
 
 export default router;

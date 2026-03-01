@@ -58,12 +58,28 @@ export const AuthProvider = ({ children }) => {
     return user?.role === 'asistente';
   };
 
+  const updateProfile = async (data) => {
+    try {
+      const response = await api.put('/auth/profile', data);
+      const updatedUser = response.data;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar perfil'
+      };
+    }
+  };
+
   const value = {
     user,
     login,
     logout,
     isJefa,
     isAsistente,
+    updateProfile,
     loading
   };
 

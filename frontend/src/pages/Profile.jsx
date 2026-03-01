@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { User, Lock, Save, Shield } from 'lucide-react';
+import { User, Lock, Save, Shield, Calendar, AtSign, CheckCircle2 } from 'lucide-react';
 
 const Profile = () => {
   const { user, updateProfile, isJefa, isAsistente } = useAuth();
@@ -55,19 +55,52 @@ const Profile = () => {
     setLoading(false);
   };
 
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+
+  const initial = (user?.fullName || user?.username || '?').charAt(0).toUpperCase();
+
   return (
     <Layout>
-      <div className="px-4 sm:px-0 max-w-2xl mx-auto">
-        <div className="flex items-center mb-8">
-          <div className="bg-purple-100 dark:bg-purple-900/50 p-3 rounded-xl mr-4">
-            <User className="w-8 h-8 text-purple-600 dark:text-purple-300" />
+      <div className="px-4 sm:px-0 max-w-2xl mx-auto space-y-6">
+
+        {/* ── Hero card ── */}
+        <div className="rounded-3xl overflow-hidden shadow-xl bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-700 px-8 py-10 flex flex-col items-center text-center">
+          {/* Avatar */}
+          <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/40 flex items-center justify-center shadow-xl mb-4">
+            <span className="text-4xl font-extrabold text-white">{initial}</span>
           </div>
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Mi Perfil</h2>
-            <p className="text-gray-500 dark:text-gray-400">Gestiona tu información personal y seguridad</p>
-          </div>
+
+          {/* Nombre */}
+          <h2 className="text-2xl font-bold text-white">{user?.fullName}</h2>
+
+          {/* Username */}
+          <p className="flex items-center gap-1 text-purple-200 text-sm mt-1">
+            <AtSign className="w-3.5 h-3.5" />
+            {user?.username}
+          </p>
+
+          {/* Badge de rol */}
+          <span className={`mt-3 inline-flex items-center gap-1.5 px-4 py-1 rounded-full text-xs font-bold ${
+            isJefa()
+              ? 'bg-yellow-400/20 border border-yellow-300/40 text-yellow-200'
+              : 'bg-sky-400/20 border border-sky-300/40 text-sky-200'
+          }`}>
+            {isJefa() ? <Shield className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+            {isJefa() ? 'Jefa' : 'Asistente'}
+          </span>
+
+          {/* Fecha de ingreso */}
+          {memberSince && (
+            <p className="flex items-center gap-1.5 text-purple-300/80 text-xs mt-3">
+              <Calendar className="w-3.5 h-3.5" />
+              Miembro desde {memberSince}
+            </p>
+          )}
         </div>
 
+        {/* ── Formulario ── */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
             {/* Información Personal */}

@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { LayoutDashboard, ListChecks, FileText, BarChart3, Bell, LogOut, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, ListChecks, FileText, BarChart3, Bell, LogOut, Moon, Sun, User } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -49,12 +49,27 @@ const Layout = ({ children }) => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-white">
-                <span className="font-medium">{user?.fullName}</span>
-                <span className="ml-2 text-purple-200">
-                  ({user?.role === 'jefa' ? 'Jefa' : 'Asistente'})
-                </span>
-              </div>
+              <Link
+                to="/profile"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-colors ${
+                  isActive('/profile')
+                    ? 'bg-white/20 text-white'
+                    : 'text-purple-100 hover:bg-white/10'
+                }`}
+                title="Ver mi perfil"
+              >
+                <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center">
+                  <span className="text-xs font-bold text-white">
+                    {(user?.fullName || user?.username || '?').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-sm text-white hidden md:block">
+                  <span className="font-medium">{user?.fullName}</span>
+                  <span className="ml-2 text-purple-200 text-xs">
+                    ({user?.role === 'jefa' ? 'Jefa' : 'Asistente'})
+                  </span>
+                </div>
+              </Link>
               
               {/* Toggle Dark Mode */}
               <button
