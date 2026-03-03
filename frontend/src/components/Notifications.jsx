@@ -21,6 +21,8 @@ const Notifications = () => {
   };
 
   useEffect(() => {
+    // Verificar tareas por vencer y generar notificaciones automáticas
+    api.get('/notifications/check-due').catch(() => {});
     fetchNotifications();
     // Polling cada 30 segundos
     const interval = setInterval(fetchNotifications, 30000);

@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, AlertTriangle, CalendarClock, CalendarCheck, TrendingUp, Star } from 'lucide-react';
+import { CheckCircle2, Clock, FileText, Plus, AlertCircle, HelpCircle, AlertTriangle, CalendarClock, CalendarCheck, TrendingUp, Star, BarChart2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, isJefa } = useAuth();
@@ -12,13 +12,25 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [urgentTasks, setUrgentTasks] = useState(null);
   const [myStats, setMyStats] = useState(null);
+  const [monthTaskCount, setMonthTaskCount] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchUrgentTasks();
+    fetchMonthSummary();
     if (!isJefa()) fetchMyStats();
   }, []);
+
+  const fetchMonthSummary = async () => {
+    const now = new Date();
+    try {
+      const res = await api.get('/reports/monthly', {
+        params: { month: now.getMonth() + 1, year: now.getFullYear() }
+      });
+      setMonthTaskCount(res.data.totalTasks);
+    } catch { /* ignorar */ }
+  };
 
   const fetchStats = async () => {
     try {
@@ -400,45 +412,74 @@ const Dashboard = () => {
           </Link>
         </div>
 
-        {/* Guía rápida */}
-        <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-md border-2 border-gray-200 dark:border-gray-700">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-            <HelpCircle className="w-8 h-8 text-purple-600 dark:text-purple-400 mr-3" />
-            ¿Cómo usar el sistema?
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                step: 1,
-                title: 'Crea o registra tareas',
-                desc: `Ve a "Tareas" y haz click en el botón ${isJefa() ? '"Nueva Tarea"' : '"Registrar Tarea"'}`,
-                color: 'bg-purple-500 text-white'
-              },
-              {
-                step: 2,
-                title: 'Marca como completadas',
-                desc: 'Cuando termines una tarea, haz click en el botón verde ✓ para finalizarla.',
-                color: 'bg-green-500 text-white'
-              },
-              {
-                step: 3,
-                title: 'Genera tu reporte',
-                desc: 'Ve a "Reportes", selecciona el mes deseado y descarga el PDF automáticamente.',
-                color: 'bg-blue-500 text-white'
-              }
-            ].map((item, idx) => (
-              <div key={idx} className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${item.color} shadow-lg`}>
-                  {item.step}
+        {/* Resumen del mes actual */}
+        {(() => {
+          const now = new Date();
+          const monthName = now.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+          const monthNum = now.getMonth() + 1;
+          const year = now.getFullYear();
+          const count = monthTaskCount ?? 0;
+          // Para la barra: usamos myStats si está disponible, o el count del reporte
+          const completedThisMonth = myStats?.myCompletedMonth ?? count;
+          const totalThisMonth = myStats?.totalThisMonth ?? count;
+          const pct = totalThisMonth > 0 ? Math.round((completedThisMonth / totalThisMonth) * 100) : (count > 0 ? 100 : 0);
+
+          return (
+            <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-lg border-2 border-purple-100 dark:border-purple-900 overflow-hidden">
+              {/* Cabecera */}
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BarChart2 className="w-7 h-7 text-white" />
+                  <div>
+                    <h3 className="text-lg font-bold text-white capitalize">Resumen de {monthName}</h3>
+                    <p className="text-purple-200 text-sm">{count} {count === 1 ? 'tarea registrada' : 'tareas registradas'} este mes</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-gray-900 dark:text-white mb-2 text-lg">{item.title}</p>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                <Link
+                  to="/reports"
+                  className="bg-white/20 hover:bg-white/30 text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Generar PDF
+                </Link>
+              </div>
+
+              {/* Cuerpo */}
+              <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Completadas del mes */}
+                <div className="text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{completedThisMonth}</p>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-300 mt-1">Completadas este mes</p>
+                </div>
+
+                {/* Pendientes */}
+                <div className="text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+                    {isJefa() ? (stats?.pendingTasks ?? 0) : (myStats?.myPending ?? 0)}
+                  </p>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mt-1">Tareas pendientes</p>
+                </div>
+
+                {/* Progreso del mes */}
+                <div className="flex flex-col justify-center">
+                  <div className="flex justify-between text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                    <span>Progreso del mes</span>
+                    <span className="text-purple-600 dark:text-purple-400">{pct}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-700"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                    {count === 0 ? 'Sin tareas registradas aún' : pct >= 100 ? '✅ ¡Mes completado!' : `${totalThisMonth - completedThisMonth} por completar`}
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          );
+        })()}
       </div>
     </Layout>
   );

@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['new_task', 'task_completed', 'task_updated'],
+    enum: ['new_task', 'task_completed', 'task_updated', 'task_due'],
     default: 'new_task'
   },
   message: {

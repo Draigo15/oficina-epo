@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { User, Lock, Save, Shield, Calendar, AtSign, CheckCircle2 } from 'lucide-react';
+import { User, Lock, Save, Shield, Calendar, AtSign, CheckCircle2, BarChart2, TrendingUp, Award } from 'lucide-react';
+import api from '../utils/api';
 
 const Profile = () => {
   const { user, updateProfile, isJefa, isAsistente } = useAuth();
@@ -12,11 +13,11 @@ const Profile = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [myStats, setMyStats] = useState(null);
 
   useEffect(() => {
-    if (user) {
-      setFullName(user.fullName);
-    }
+    if (user) setFullName(user.fullName);
+    api.get('/reports/my-stats').then(r => setMyStats(r.data)).catch(() => {});
   }, [user]);
 
   const handleSubmit = async (e) => {
@@ -99,6 +100,38 @@ const Profile = () => {
             </p>
           )}
         </div>
+
+        {/* ── Tarjetas de estadísticas ── */}
+        {myStats && (
+          <div className="grid grid-cols-3 gap-4">
+            {/* Total completadas */}
+            <div className="rounded-2xl bg-white dark:bg-gray-800 border-2 border-green-200 dark:border-green-800 p-4 flex flex-col items-center text-center shadow">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center mb-2">
+                <Award className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{myStats.myCompletedTotal}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 leading-tight">Completadas en total</p>
+            </div>
+
+            {/* Este mes */}
+            <div className="rounded-2xl bg-white dark:bg-gray-800 border-2 border-purple-200 dark:border-purple-800 p-4 flex flex-col items-center text-center shadow">
+              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center mb-2">
+                <BarChart2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <p className="text-3xl font-extrabold text-purple-600 dark:text-purple-400">{myStats.myCompletedMonth}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 leading-tight capitalize">Este {myStats.monthName}</p>
+            </div>
+
+            {/* Pendientes */}
+            <div className="rounded-2xl bg-white dark:bg-gray-800 border-2 border-amber-200 dark:border-amber-800 p-4 flex flex-col items-center text-center shadow">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mb-2">
+                <TrendingUp className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">{myStats.progressPercent}%</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 leading-tight">Progreso del mes</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Formulario ── */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
