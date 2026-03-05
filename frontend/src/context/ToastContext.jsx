@@ -41,10 +41,10 @@ export const ToastProvider = ({ children }) => {
             key={toast.id}
             className={`
               flex items-center w-full p-4 rounded-lg shadow-lg transform transition-all duration-300 slide-in-right
-              ${toast.type === 'success' ? 'bg-white border-l-4 border-green-500 text-green-700' : ''}
-              ${toast.type === 'error' ? 'bg-white border-l-4 border-red-500 text-red-700' : ''}
-              ${toast.type === 'warning' ? 'bg-white border-l-4 border-yellow-500 text-yellow-700' : ''}
-              ${toast.type === 'info' ? 'bg-white border-l-4 border-purple-500 text-purple-700' : ''}
+              ${toast.type === 'success' ? 'bg-white dark:bg-gray-800 border-l-4 border-green-500 text-green-700 dark:text-green-400' : ''}
+              ${toast.type === 'error' ? 'bg-white dark:bg-gray-800 border-l-4 border-red-500 text-red-700 dark:text-red-400' : ''}
+              ${toast.type === 'warning' ? 'bg-white dark:bg-gray-800 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-400' : ''}
+              ${toast.type === 'info' ? 'bg-white dark:bg-gray-800 border-l-4 border-purple-500 text-purple-700 dark:text-purple-400' : ''}
             `}
             role="alert"
           >
@@ -57,7 +57,7 @@ export const ToastProvider = ({ children }) => {
             <div className="ml-3 text-sm font-medium flex-1">{toast.message}</div>
             <button
               onClick={() => removeToast(toast.id)}
-              className="ml-2 rounded-lg p-1 hover:bg-gray-100 transition-colors"
+              className="ml-2 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               <X className="w-4 h-4 text-gray-400" />
             </button>
