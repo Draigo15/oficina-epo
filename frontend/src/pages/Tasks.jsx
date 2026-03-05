@@ -26,6 +26,7 @@ const Tasks = () => {
   const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState('all'); // all, pendiente, completada
   const [timePeriod, setTimePeriod] = useState('month'); // 'all', 'week', 'month'
+  const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'alta', 'normal'
   const [searchTerm, setSearchTerm] = useState('');
   // Reloj para re-renderizar el badge de vencimiento cada minuto
   const [, setTick] = useState(0);
@@ -238,6 +239,9 @@ const Tasks = () => {
       }
     }
     
+    // Filtrar por prioridad
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+
     // Filtrar por búsqueda
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -629,6 +633,42 @@ const Tasks = () => {
             <div className="text-sm mt-1 opacity-80">({tasks.filter(t => t.status === 'completada').length})</div>
           </button>
         </div>
+
+        {/* Filtro de Prioridad - Solo en vista Lista */}
+        {viewMode === 'list' && (
+          <div className="mb-4 flex gap-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg w-fit">
+            <button
+              onClick={() => setPriorityFilter('all')}
+              className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                priorityFilter === 'all'
+                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+              }`}
+            >
+              🗂️ Todas
+            </button>
+            <button
+              onClick={() => setPriorityFilter('alta')}
+              className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                priorityFilter === 'alta'
+                  ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400'
+              }`}
+            >
+              🔴 Urgente
+            </button>
+            <button
+              onClick={() => setPriorityFilter('normal')}
+              className={`px-4 py-2 rounded-md font-semibold transition-all text-sm ${
+                priorityFilter === 'normal'
+                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+              }`}
+            >
+              🟣 Normal
+            </button>
+          </div>
+        )}
 
         {/* Filtros de Período de Tiempo - Solo en vista Lista */}
         {viewMode === 'list' && (

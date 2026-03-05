@@ -60,6 +60,27 @@ const seed = async () => {
       message: 'Nueva tarea creada: "Coordinación de capacitación docente"',
       isRead: true,
     },
+    {
+      recipient: recipientId,
+      sender: senderId,
+      type: 'task_due',
+      message: 'La tarea "Revisión de expedientes pendientes" vence mañana',
+      isRead: false,
+    },
+    {
+      recipient: recipientId,
+      sender: senderId,
+      type: 'new_task',
+      message: 'Se te asignó una nueva tarea: "Preparación de agenda para reunión directiva"',
+      isRead: false,
+    },
+    {
+      recipient: recipientId,
+      sender: senderId,
+      type: 'task_updated',
+      message: 'La tarea "Control de inventario de materiales" fue actualizada con comentarios nuevos',
+      isRead: false,
+    },
   ];
 
   await Notification.insertMany(notifs);
