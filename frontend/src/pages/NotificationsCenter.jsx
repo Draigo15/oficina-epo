@@ -10,6 +10,7 @@ const NotificationsCenter = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all | unread | read
   const [query, setQuery] = useState('');
+  const [justRead, setJustRead] = useState(new Set());
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -38,9 +39,17 @@ const NotificationsCenter = () => {
 
   const markAsRead = async (id) => {
     try {
+      // Activar animación inmediatamente
+      setJustRead((prev) => new Set([...prev, id]));
       await api.patch(`/notifications/${id}/read`);
-      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)));
+      toastSuccess('Notificación marcada como leída');
+      // Esperar animación antes de cambiar estado visual
+      setTimeout(() => {
+        setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)));
+        setJustRead((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      }, 600);
     } catch (err) {
+      setJustRead((prev) => { const s = new Set(prev); s.delete(id); return s; });
       toastError('No se pudo actualizar la notificación');
     }
   };
@@ -207,9 +216,20 @@ const NotificationsCenter = () => {
                       <button
                         onClick={() => markAsRead(n._id)}
                         title="Marcar como leída"
-                        className="flex-shrink-0 w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60 flex items-center justify-center transition-colors"
+                        disabled={justRead.has(n._id)}
+                        className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                          justRead.has(n._id)
+                            ? 'bg-green-100 dark:bg-green-900/40 scale-125 shadow-md shadow-green-400/40'
+                            : 'bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800/60 hover:scale-110'
+                        }`}
                       >
-                        <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <CheckCircle2
+                          className={`w-4 h-4 transition-all duration-300 ${
+                            justRead.has(n._id)
+                              ? 'text-green-500 scale-110'
+                              : 'text-purple-600 dark:text-purple-400'
+                          }`}
+                        />
                       </button>
                     )}
                   </li>
